@@ -403,6 +403,7 @@ class BoardApi {
       ));
     }
     out.sort((a, b) => '${a.day} ${a.scheduled}'.compareTo('${b.day} ${b.scheduled}'));
-    return out;
+    // Ferry / private movements without a destination are noise on a passenger board.
+    return out.where((f) => f.otherIata.isNotEmpty || (f.otherName.isNotEmpty && f.otherName.toLowerCase() != 'unknown')).toList();
   }
 }

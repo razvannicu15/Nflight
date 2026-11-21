@@ -97,7 +97,12 @@ class LiveApi {
   /// Finds the plane by transponder hex (exact) or by callsign in the box
   /// spanning both airports. Returns null when it is not airborne/visible.
   static Future<LiveState?> find(
-      {String icao24 = '', String callsign = '', String prefix = '', required String from, required String to}) async {
+      {String icao24 = '',
+      String callsign = '',
+      String prefix = '',
+      Set<String> exclude = const {},
+      required String from,
+      required String to}) async {
     try {
       if (icao24.isNotEmpty) {
         final s = await _query({'icao24': icao24.toLowerCase()});
@@ -115,6 +120,7 @@ class LiveApi {
       });
       final want = callsign.toUpperCase();
       for (final s in states) {
+        if (exclude.contains((s[0] ?? '').toString())) continue;
         if (want.isNotEmpty && (s[1] ?? '').toString().trim().toUpperCase() == want) return _state(s);
       }
       // Airlines often fly under alphanumeric callsigns (WZZ6DB, RYR59BU): take the plane of that
@@ -124,7 +130,7 @@ class LiveApi {
       var bestScore = 1e9;
       for (final s in states) {
         final cs = (s[1] ?? '').toString().trim().toUpperCase();
-        if (!cs.startsWith(prefix.toUpperCase())) continue;
+        if (!cs.startsWith(prefix.toUpperCase()) || exclude.contains((s[0] ?? '').toString())) continue;
         final st = _state(s);
         if (st == null || st.onGround) continue;
         final off = a == b ? 0.0 : _offRoute(st.lat, st.lon, a, b);
@@ -243,6 +249,14 @@ class LiveApi {
     } catch (_) {
       return (const <(double, double)>[], null);
     }
+  }
+
+  static double kmBetween(double la1, double lo1, double la2, double lo2) {
+    const r = 6371.0;
+    double rad(double d) => d * pi / 180;
+    final dLat = rad(la2 - la1), dLon = rad(lo2 - lo1);
+    final h = sin(dLat / 2) * sin(dLat / 2) + cos(rad(la1)) * cos(rad(la2)) * sin(dLon / 2) * sin(dLon / 2);
+    return 2 * r * asin(min(1, sqrt(h)));
   }
 
   /// Great-circle distance in km between a position and an airport.

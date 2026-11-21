@@ -279,8 +279,9 @@ class _BoardPageState extends State<BoardPage> {
         schedArr: departures ? null : f.scheduled,
         date: f.day,
       );
+      final canTrack = target.from.isNotEmpty && target.to.isNotEmpty && target.from != target.to;
       return InkWell(
-        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => LivePage(target: target))),
+        onTap: canTrack ? () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => LivePage(target: target))) : null,
         child: Container(
         color: mine ? cs.primaryContainer.withValues(alpha: 0.55) : null,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),

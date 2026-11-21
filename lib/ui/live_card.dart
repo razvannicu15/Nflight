@@ -71,6 +71,25 @@ mixin _LivePolling<T extends StatefulWidget> on State<T> {
   List<(double, double)> _path = const [];
   DateTime? _start;
   bool _pathTried = false;
+  final Set<String> _rejected = {};
+
+  /// A candidate is the right plane only if its track starts at the flight's origin
+  /// (otherwise it is another flight of the same aircraft or airline).
+  Future<bool> _verify(LiveState s) async {
+    final t = eff;
+    // Found by the flight's own callsign or transponder, or only guessed from the route?
+    final exact = (t.callsign.isNotEmpty && s.callsign.toUpperCase() == t.callsign.toUpperCase()) ||
+        (t.icao24.isNotEmpty && s.icao24 == t.icao24);
+    final (p, start) = await LiveApi.path(s.icao24);
+    final from = Airports.get(t.from);
+    if (from != null) {
+      if (p.isEmpty && !exact) return false; // a guess needs proof
+      if (p.isNotEmpty && LiveApi.kmBetween(p.first.$1, p.first.$2, from.lat, from.lon) > 60) return false;
+    }
+    _path = p;
+    _start = start;
+    return true;
+  }
 
   /// The target with gaps filled in (real callsign, transponder, missing airport).
   LiveTarget? _eff;
@@ -94,23 +113,22 @@ mixin _LivePolling<T extends StatefulWidget> on State<T> {
     final t = eff;
     final prefix = icaoAirline[t.carrier.toUpperCase()] ?? '';
     var s = await LiveApi.find(
-        icao24: _icao.isNotEmpty ? _icao : t.icao24,
+        icao24: _icao.isNotEmpty ? _icao : (_rejected.contains(t.icao24) ? '' : t.icao24),
         callsign: _icao.isNotEmpty ? '' : t.callsign,
         prefix: _icao.isNotEmpty ? '' : prefix,
+        exclude: _rejected,
         from: t.from,
         to: t.to);
-    if (s == null && _icao.isNotEmpty) {
-      // Lost by transponder: try once more by callsign / route.
-      s = await LiveApi.find(callsign: t.callsign, prefix: prefix, from: t.from, to: t.to);
+    if (s != null && !_pathTried) {
+      if (await _verify(s)) {
+        _pathTried = true;
+      } else {
+        _rejected.add(s.icao24);
+        s = null;
+      }
     }
     if (s != null) {
       _icao = s.icao24;
-      if (!_pathTried) {
-        _pathTried = true;
-        final (p, start) = await LiveApi.path(s.icao24);
-        _path = p;
-        _start = start;
-      }
       if (_path.isNotEmpty) _path = [..._path, (s.lat, s.lon)];
       // Origin still unknown: the airport where the track starts.
       if (eff.from.isEmpty && _path.isNotEmpty) {
@@ -176,7 +194,7 @@ class _LiveFlightCardState extends State<LiveFlightCard> with _LivePolling<LiveF
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
             child: state == null
-                ? _Searching(loading: loading)
+                ? _Searching(loading: loading, target: eff)
                 : Column(children: [
                     RouteProgress(target: eff, state: state!),
                     const SizedBox(height: 14),
@@ -231,7 +249,7 @@ class _LivePageState extends State<LivePage> with _LivePolling<LivePage> {
             top: false,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
-              child: state == null ? _Searching(loading: loading) : _panel(context, t, state!),
+              child: state == null ? _Searching(loading: loading, target: t) : _panel(context, t, state!),
             ),
           ),
         ),
@@ -290,8 +308,23 @@ class _LivePageState extends State<LivePage> with _LivePolling<LivePage> {
 }
 
 class _Searching extends StatelessWidget {
-  const _Searching({required this.loading});
+  const _Searching({required this.loading, required this.target});
   final bool loading;
+  final LiveTarget target;
+
+  /// "Landed · 18:20" / "Not departed yet · 19:00" from the schedule, when known.
+  String _why() {
+    DateTime? at(String? hhmm, String iata) {
+      if (hhmm == null || target.date.isEmpty || Airports.get(iata) == null) return null;
+      final d = DateTime.tryParse('${target.date}T$hhmm');
+      return d == null ? null : Airports.toInstant(iata, d);
+    }
+    final now = DateTime.now();
+    final arr = at(target.schedArr, target.to), dep = at(target.schedDep, target.from);
+    if (arr != null && now.isAfter(arr)) return tr('A aterizat · ${target.schedArr}', 'Landed · ${target.schedArr}');
+    if (dep != null && now.isBefore(dep)) return tr('Nu a decolat încă · ${target.schedDep}', 'Not departed yet · ${target.schedDep}');
+    return tr('Avionul nu e vizibil acum', 'The plane is not visible now');
+  }
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -301,7 +334,7 @@ class _Searching extends StatelessWidget {
       else
         Icon(Icons.flight, size: 18, color: cs.onSurfaceVariant),
       const SizedBox(width: 10),
-      Text(loading ? tr('Caut avionul…', 'Looking for the plane…') : tr('Avionul nu e în aer acum', 'The plane is not airborne now'),
+      Text(loading ? tr('Caut avionul…', 'Looking for the plane…') : _why(),
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
     ]);
   }
@@ -368,15 +401,23 @@ class RouteProgress extends StatelessWidget {
         Expanded(
           child: Text(
             since == null ? '' : tr('Decolat acum ${durationText(since)}', 'Departed ${durationText(since)} ago'),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: sub,
           ),
         ),
         if (eta != null)
-          Text.rich(TextSpan(children: [
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Text.rich(TextSpan(children: [
             TextSpan(text: tr('Aterizează ~', 'Lands ~'), style: sub),
             TextSpan(text: eta, style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w800, color: cs.primary)),
             TextSpan(text: tr(' · în ${durationText(Duration(minutes: mins!))}', ' · in ${durationText(Duration(minutes: mins!))}'), style: sub),
-          ])),
+              ])),
+            ),
+          ),
       ]),
     ]);
   }
@@ -448,7 +489,11 @@ class LiveMap extends StatelessWidget {
         ? <LatLng>[]
         : (s!.path.length > 1 ? [for (final p in s.path) LatLng(p.$1, p.$2), plane] : greatCircle(pa, plane, n: 32));
     final remaining = plane == null ? greatCircle(pa, pb) : greatCircle(plane, pb, n: 32);
-    final bounds = LatLngBounds.fromPoints([pa, pb, if (plane != null) plane, ...flown]);
+    var bounds = LatLngBounds.fromPoints([pa, pb, if (plane != null) plane, ...flown]);
+    if ((bounds.north - bounds.south).abs() < 1 && (bounds.east - bounds.west).abs() < 1) {
+      final c = bounds.center; // a single point would zoom in forever
+      bounds = LatLngBounds(LatLng(c.latitude - 1, c.longitude - 1.5), LatLng(c.latitude + 1, c.longitude + 1.5));
+    }
 
     Widget dot(String code) => Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -463,6 +508,8 @@ class LiveMap extends StatelessWidget {
       options: MapOptions(
         initialCameraFit: CameraFit.bounds(bounds: bounds, padding: const EdgeInsets.fromLTRB(40, 40, 40, 40)),
         backgroundColor: dark ? const Color(0xFF1B1E24) : const Color(0xFFE8EDF2),
+        minZoom: 1,
+        maxZoom: 13,
         interactionOptions: InteractionOptions(
             flags: interactive ? InteractiveFlag.all & ~InteractiveFlag.rotate : InteractiveFlag.none),
       ),
