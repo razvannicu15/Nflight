@@ -58,6 +58,35 @@ class AircraftInfo {
 class LiveApi {
   static const _base = 'opensky-network.org';
 
+  // Free OpenSky account (OAuth2 client credentials, CI secrets): 4000 credits/day instead of 400.
+  static const _clientId = String.fromEnvironment('OPENSKY_CLIENT_ID');
+  static const _clientSecret = String.fromEnvironment('OPENSKY_CLIENT_SECRET');
+  static bool get authed => _clientId.isNotEmpty && _clientSecret.isNotEmpty;
+  static String? _token;
+  static DateTime? _tokenExp;
+
+  static Future<Map<String, String>> _headers() async {
+    if (!authed) return const {};
+    if (_token == null || _tokenExp == null || DateTime.now().isAfter(_tokenExp!)) {
+      try {
+        final r = await http.post(
+          Uri.parse('https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token'),
+          body: {'grant_type': 'client_credentials', 'client_id': _clientId, 'client_secret': _clientSecret},
+        ).timeout(const Duration(seconds: 15));
+        final j = jsonDecode(r.body);
+        if (r.statusCode == 200 && j is Map && j['access_token'] is String) {
+          _token = j['access_token'] as String;
+          final exp = (j['expires_in'] as num?)?.toInt() ?? 1800;
+          _tokenExp = DateTime.now().add(Duration(seconds: exp - 60));
+        }
+      } catch (_) {}
+    }
+    return _token == null ? const {} : {'Authorization': 'Bearer $_token'};
+  }
+
+  static void _quota(http.Response r) =>
+      Quota.fromHeaders(Quota.opensky, r.headers, status: r.statusCode, defaultLimit: authed ? 4000 : 400);
+
   /// Finds the plane by transponder hex (exact) or by callsign in the box
   /// spanning both airports. Returns null when it is not airborne/visible.
   static Future<LiveState?> find({String icao24 = '', String callsign = '', required String from, required String to}) async {
@@ -85,8 +114,8 @@ class LiveApi {
   }
 
   static Future<List<List>> _query(Map<String, String> q) async {
-    final r = await http.get(Uri.https(_base, '/api/states/all', q)).timeout(const Duration(seconds: 15));
-    Quota.fromHeaders(Quota.opensky, r.headers, status: r.statusCode);
+    final r = await http.get(Uri.https(_base, '/api/states/all', q), headers: await _headers()).timeout(const Duration(seconds: 15));
+    _quota(r);
     if (r.statusCode != 200) return [];
     final j = jsonDecode(r.body);
     final list = j is Map ? j['states'] : null;
@@ -122,7 +151,7 @@ class LiveApi {
     AircraftInfo? info;
     try {
       final r = await http
-          .get(Uri.https(_base, '/api/metadata/aircraft/icao/$k'))
+          .get(Uri.https(_base, '/api/metadata/aircraft/icao/$k'), headers: await _headers())
           .timeout(const Duration(seconds: 15));
       if (r.statusCode == 200) {
         final j = jsonDecode(r.body);
@@ -146,9 +175,9 @@ class LiveApi {
     if (icao24.isEmpty) return (const <(double, double)>[], null);
     try {
       final r = await http
-          .get(Uri.https(_base, '/api/tracks/all', {'icao24': icao24.toLowerCase(), 'time': '0'}))
+          .get(Uri.https(_base, '/api/tracks/all', {'icao24': icao24.toLowerCase(), 'time': '0'}), headers: await _headers())
           .timeout(const Duration(seconds: 15));
-      Quota.fromHeaders(Quota.opensky, r.headers, status: r.statusCode);
+      _quota(r);
       if (r.statusCode != 200) return (const <(double, double)>[], null);
       final j = jsonDecode(r.body);
       final pts = j is Map ? j['path'] : null;

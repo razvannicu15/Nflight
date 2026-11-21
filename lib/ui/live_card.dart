@@ -58,12 +58,33 @@ mixin _LivePolling<T extends StatefulWidget> on State<T> {
     _timer = Timer.periodic(const Duration(minutes: 2), (_) => _poll());
   }
 
+  // Once found, the plane is followed by transponder (1 credit) and the track is
+  // fetched once (4 credits) and then extended on the phone.
+  String _icao = '';
+  List<(double, double)> _path = const [];
+  DateTime? _start;
+  bool _pathTried = false;
+
   Future<void> _poll() async {
     var s = await LiveApi.find(
-        icao24: target.icao24, callsign: target.callsign, from: target.from, to: target.to);
+        icao24: _icao.isNotEmpty ? _icao : target.icao24,
+        callsign: _icao.isNotEmpty ? '' : target.callsign,
+        from: target.from,
+        to: target.to);
+    if (s == null && _icao.isNotEmpty) {
+      // Lost by transponder (e.g. landed): try once more by callsign.
+      s = await LiveApi.find(callsign: target.callsign, from: target.from, to: target.to);
+    }
     if (s != null) {
-      final (p, start) = await LiveApi.path(s.icao24);
-      if (p.length > 1 || start != null) s = s.withPath(p.length > 1 ? p : s.path, start);
+      _icao = s.icao24;
+      if (!_pathTried) {
+        _pathTried = true;
+        final (p, start) = await LiveApi.path(s.icao24);
+        _path = p;
+        _start = start;
+      }
+      if (_path.isNotEmpty) _path = [..._path, (s.lat, s.lon)];
+      s = s.withPath(_path, _start);
       aircraft ??= await LiveApi.aircraft(s.icao24);
     }
     if (!mounted) return;

@@ -49,7 +49,7 @@ class Quota {
       };
 
   /// Reads x-ratelimit-* style headers (RapidAPI, OpenSky).
-  static void fromHeaders(String src, Map<String, String> h, {int? status}) {
+  static void fromHeaders(String src, Map<String, String> h, {int? status, int? defaultLimit}) {
     int? pick(List<String> keys) {
       for (final k in keys) {
         final v = int.tryParse((h[k] ?? '').trim());
@@ -68,7 +68,7 @@ class Quota {
     final old = store.quotas[src];
     DateTime? reset = resetSec == null ? null : now.add(Duration(seconds: resetSec));
     if (src == opensky) {
-      limit ??= 400; // anonymous daily credits
+      limit ??= defaultLimit ?? 400; // daily credits: 400 anonymous, 4000 with an account
       final u = now.toUtc();
       reset ??= DateTime.utc(u.year, u.month, u.day + 1).toLocal();
     }
