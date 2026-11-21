@@ -121,6 +121,8 @@ void main() {
         await t.tap(find.byType(FloatingActionButton));
       });
       await shot(t, '10_code', BoardingCodePage(passes: [store.upcoming.first, ...store.companions(store.upcoming.first)]));
+      await shot(t, '10_code_dark', BoardingCodePage(passes: [store.upcoming.first, ...store.companions(store.upcoming.first)]),
+          b: Brightness.dark);
       await shot(t, '11_edit', EditPassPage(existing: store.upcoming.first));
       store.passes.clear();
       await shot(t, '12_empty', const HomeShell(startServices: false));

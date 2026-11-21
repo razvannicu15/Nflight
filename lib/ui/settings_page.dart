@@ -30,33 +30,6 @@ class _SettingsPageState extends State<SettingsPage> {
     if (reschedule) Notifier.rescheduleAll();
   }
 
-  Future<void> _editKey() async {
-    final c = TextEditingController(text: store.apiKey);
-    final v = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(tr('Cheie AeroDataBox', 'AeroDataBox key')),
-        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(tr('Cheie gratuită de pe rapidapi.com (AeroDataBox).',
-              'Free key from rapidapi.com (AeroDataBox).')),
-          const SizedBox(height: 16),
-          TextField(
-            controller: c,
-            autofocus: true,
-            decoration: const InputDecoration(labelText: 'X-RapidAPI-Key'),
-          ),
-        ]),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('Anulează', 'Cancel'))),
-          FilledButton(onPressed: () => Navigator.pop(ctx, c.text.trim()), child: Text(tr('Salvează', 'Save'))),
-        ],
-      ),
-    );
-    if (v == null) return;
-    _set(() => store.apiKey = v);
-    if (v.isNotEmpty) StatusApi.refreshSoon();
-  }
-
   Future<void> _export() async {
     final bytes = Uint8List.fromList(utf8.encode(store.exportJson()));
     final path = await FilePicker.platform.saveFile(
@@ -113,9 +86,9 @@ class _SettingsPageState extends State<SettingsPage> {
                 child: SegmentedButton<ThemeMode>(
                   showSelectedIcon: false,
                   segments: [
-                    ButtonSegment(value: ThemeMode.system, label: Text(tr('Automat', 'Auto')), icon: const Icon(Icons.brightness_auto_outlined)),
-                    ButtonSegment(value: ThemeMode.light, label: Text(tr('Luminos', 'Light')), icon: const Icon(Icons.light_mode_outlined)),
-                    ButtonSegment(value: ThemeMode.dark, label: Text(tr('Întunecat', 'Dark')), icon: const Icon(Icons.dark_mode_outlined)),
+                    ButtonSegment(value: ThemeMode.system, icon: const Icon(Icons.brightness_auto_outlined), tooltip: tr('Automat', 'Auto')),
+                    ButtonSegment(value: ThemeMode.light, icon: const Icon(Icons.light_mode_outlined), tooltip: tr('Luminos', 'Light')),
+                    ButtonSegment(value: ThemeMode.dark, icon: const Icon(Icons.dark_mode_outlined), tooltip: tr('Întunecat', 'Dark')),
                   ],
                   selected: {store.themeMode},
                   onSelectionChanged: (s) => _set(() => store.themeMode = s.first),
@@ -141,14 +114,9 @@ class _SettingsPageState extends State<SettingsPage> {
               ListTile(
                 leading: Icon(StatusApi.enabled ? Icons.cloud_done_outlined : Icons.cloud_off_outlined,
                     color: StatusApi.enabled ? cs.primary : null),
-                title: Text(tr('Cheie AeroDataBox', 'AeroDataBox key')),
-                subtitle: Text(store.apiKey.trim().isNotEmpty
-                    ? tr('Cheie proprie', 'Own key')
-                    : StatusApi.builtInKey.isNotEmpty
-                        ? tr('Activ · cheie integrată', 'On · built-in key')
-                        : tr('Opțional', 'Optional')),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: _editKey,
+                title: Text(tr('Întârzieri, poartă, terminal', 'Delays, gate, terminal')),
+                trailing: Text(StatusApi.enabled ? tr('Activ', 'On') : tr('Inactiv', 'Off'),
+                    style: TextStyle(color: StatusApi.enabled ? cs.primary : cs.onSurfaceVariant, fontWeight: FontWeight.w600)),
               ),
               SectionTitle(tr('Bilete', 'Passes')),
               SwitchListTile(

@@ -15,7 +15,7 @@ class StatusApi {
   /// Family build key, injected by CI from the RAPIDAPI_KEY secret (never in the repo).
   static const builtInKey = String.fromEnvironment('RAPIDAPI_KEY');
 
-  static String get key => store.apiKey.trim().isNotEmpty ? store.apiKey.trim() : builtInKey;
+  static String get key => builtInKey;
   static bool get enabled => key.isNotEmpty;
 
   /// Updates [p] in place. Returns an error message, or null on success.
