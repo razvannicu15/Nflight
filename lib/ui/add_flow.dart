@@ -110,7 +110,7 @@ Future<void> saveImported(BuildContext context, ImportResult res) async {
           : tr('${saved.length} zboruri salvate', '${saved.length} flights saved'))));
   if (StatusApi.enabled) {
     for (final p in saved) {
-      if (!Store.isPast(p)) StatusApi.refresh(p);
+      if (!Store.isPast(p) || p.statusCheckedAt == null) StatusApi.refresh(p);
     }
   }
   if (context.mounted) {

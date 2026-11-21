@@ -40,6 +40,7 @@ class FlightPass {
     this.boarding,
     this.status = FlightStatus.unknown,
     this.delayMinutes = 0,
+    this.arrivalDelayMinutes = 0,
     this.aircraft = '',
     this.archived = false,
     this.note = '',
@@ -74,6 +75,9 @@ class FlightPass {
   String terminal;
   FlightStatus status;
   int delayMinutes;
+
+  /// Delay at arrival (what EU 261 compensation is based on).
+  int arrivalDelayMinutes;
   String aircraft;
   bool archived;
   String note;
@@ -124,6 +128,7 @@ class FlightPass {
         'term': terminal,
         'status': status.name,
         'delay': delayMinutes,
+        'arrDelay': arrivalDelayMinutes,
         'ac': aircraft,
         'arch': archived,
         'note': note,
@@ -154,6 +159,7 @@ class FlightPass {
         status: FlightStatus.values.firstWhere((s) => s.name == j['status'],
             orElse: () => FlightStatus.unknown),
         delayMinutes: (j['delay'] as num?)?.toInt() ?? 0,
+        arrivalDelayMinutes: (j['arrDelay'] as num?)?.toInt() ?? 0,
         aircraft: j['ac'] ?? '',
         archived: j['arch'] == true,
         note: j['note'] ?? '',

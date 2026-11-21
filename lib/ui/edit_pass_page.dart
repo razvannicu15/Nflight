@@ -77,7 +77,7 @@ class _EditPassPageState extends State<EditPassPage> {
       store.save();
     }
     await Notifier.schedule(p);
-    if (e == null && StatusApi.enabled && !Store.isPast(p)) StatusApi.refresh(p);
+    if (e == null && StatusApi.enabled) StatusApi.refresh(p);
     if (mounted) Navigator.pop(context);
   }
 

@@ -122,6 +122,7 @@ class StatusChip extends StatelessWidget {
     };
     var text = statusLabel(s);
     if (s == FlightStatus.delayed && pass.delayMinutes > 0) text += ' ${pass.delayMinutes} min';
+    if (s == FlightStatus.landed && pass.arrivalDelayMinutes >= 15) text += ' · +${pass.arrivalDelayMinutes} min';
     return Container(
       padding: EdgeInsets.symmetric(horizontal: dense ? 8 : 10, vertical: dense ? 2 : 4),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),

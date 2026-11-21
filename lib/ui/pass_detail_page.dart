@@ -216,7 +216,7 @@ class _PassDetailPageState extends State<PassDetailPage> {
             if (dist > 0)
               (tr('Distanță', 'Distance'), '${km(dist)} km · ${durationText(flightDuration(p))}', null),
           ]),
-          if (p.status == FlightStatus.cancelled || p.delayMinutes >= 120 || !upcoming)
+          if (p.status == FlightStatus.cancelled || p.delayMinutes >= 120 || p.arrivalDelayMinutes >= 120 || !upcoming)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
               child: OutlinedButton.icon(

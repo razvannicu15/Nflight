@@ -29,12 +29,18 @@ class StatusApi {
         'X-RapidAPI-Key': key,
         'X-RapidAPI-Host': host,
       }).timeout(const Duration(seconds: 20));
-      if (r.statusCode == 204 || r.body.trim().isEmpty) return tr('Zborul nu a fost găsit încă.', 'Flight not found yet.');
+      if (r.statusCode == 204 || r.body.trim().isEmpty) {
+        _markTried(p);
+        return tr('Zborul nu a fost găsit.', 'Flight not found.');
+      }
       if (r.statusCode == 401 || r.statusCode == 403) return tr('Cheie API invalidă.', 'Invalid API key.');
       if (r.statusCode == 429) return tr('Limita lunară a cheii API a fost atinsă.', 'Monthly API key limit reached.');
       if (r.statusCode != 200) return tr('Eroare server (${r.statusCode}).', 'Server error (${r.statusCode}).');
       final list = jsonDecode(r.body);
-      if (list is! List || list.isEmpty) return tr('Zborul nu a fost găsit încă.', 'Flight not found yet.');
+      if (list is! List || list.isEmpty) {
+        _markTried(p);
+        return tr('Zborul nu a fost găsit.', 'Flight not found.');
+      }
       Map<String, dynamic> f = Map<String, dynamic>.from(list.first as Map);
       for (final e in list) {
         final m = Map<String, dynamic>.from(e as Map);
@@ -56,6 +62,12 @@ class StatusApi {
     } catch (e) {
       return tr('Fără conexiune la serviciul de status.', 'Cannot reach the status service.');
     }
+  }
+
+  static void _markTried(FlightPass p) {
+    if (!Store.isPast(p)) return;
+    p.statusCheckedAt = DateTime.now();
+    store.save();
   }
 
   static String? _iata(dynamic side) {
@@ -95,6 +107,10 @@ class StatusApi {
     final sched = _utc(dep['scheduledTime']);
     final best = _utc(dep['runwayTime']) ?? _utc(dep['revisedTime']);
     p.delayMinutes = (sched != null && best != null) ? best.difference(sched).inMinutes.clamp(0, 6000) : 0;
+    final aSched = _utc(arr['scheduledTime']);
+    final aBest = _utc(arr['runwayTime']) ?? _utc(arr['revisedTime']);
+    p.arrivalDelayMinutes =
+        (aSched != null && aBest != null) ? aBest.difference(aSched).inMinutes.clamp(0, 6000) : 0;
 
     final s = (f['status'] ?? '').toString().toLowerCase();
     p.status = switch (s) {
@@ -113,6 +129,20 @@ class StatusApi {
         if (p.delayMinutes >= 5) tr('Întârziere ${p.delayMinutes} min · pleacă la ${Notifier.hmOf(p)}', 'Delayed ${p.delayMinutes} min · departs ${Notifier.hmOf(p)}'),
         if (p.gate.isNotEmpty) '${tr('Poarta', 'Gate')} ${p.gate}',
       ].join(' · ');
+
+  /// Past flights get one lookup ever (real times, final status, delay).
+  /// A few per launch, newest first, so old imports fill in over time.
+  static Future<void> backfillPast() async {
+    if (!enabled) return;
+    final cutoff = DateTime.now().subtract(const Duration(days: 365));
+    final todo = store.history
+        .where((p) => p.statusCheckedAt == null && p.day.isAfter(cutoff))
+        .take(5)
+        .toList();
+    for (final p in todo) {
+      await refresh(p);
+    }
+  }
 
   /// Refreshes flights departing in the next 36 hours (saves API calls).
   static Future<void> refreshSoon() async {

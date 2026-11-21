@@ -35,7 +35,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       if (f != null) _openFile(f);
       await Notifier.requestPermission();
       await Notifier.rescheduleAll();
-      StatusApi.refreshSoon();
+      await StatusApi.refreshSoon();
+      StatusApi.backfillPast();
     });
   }
 

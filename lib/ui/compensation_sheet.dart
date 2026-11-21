@@ -38,7 +38,9 @@ class _CompSheet extends StatefulWidget {
 }
 
 class _CompSheetState extends State<_CompSheet> {
-  late double _delay = (widget.p.delayMinutes / 60).clamp(0, 8).toDouble();
+  late double _delay = ((widget.p.arrivalDelayMinutes > 0 ? widget.p.arrivalDelayMinutes : widget.p.delayMinutes) / 60)
+      .clamp(0, 8)
+      .toDouble();
   late bool _cancelled = widget.p.status == FlightStatus.cancelled;
 
   @override
