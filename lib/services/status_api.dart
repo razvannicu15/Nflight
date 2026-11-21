@@ -103,6 +103,9 @@ class StatusApi {
     if (g.isNotEmpty) p.gate = g;
     final ac = f['aircraft'];
     if (ac is Map && (ac['model'] ?? '').toString().isNotEmpty) p.aircraft = ac['model'].toString();
+    if (ac is Map && (ac['modeS'] ?? '').toString().isNotEmpty) p.icao24 = ac['modeS'].toString().toLowerCase();
+    final cs = (f['callSign'] ?? '').toString().replaceAll(' ', '');
+    if (cs.isNotEmpty) p.callsign = cs;
 
     final sched = _utc(dep['scheduledTime']);
     final best = _utc(dep['runwayTime']) ?? _utc(dep['revisedTime']);

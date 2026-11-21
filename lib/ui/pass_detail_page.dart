@@ -10,6 +10,7 @@ import '../services/store.dart';
 import 'boarding_code_page.dart';
 import 'compensation_sheet.dart';
 import 'edit_pass_page.dart';
+import 'live_card.dart';
 import 'widgets.dart';
 import '../core/i18n.dart';
 
@@ -187,6 +188,18 @@ class _PassDetailPageState extends State<PassDetailPage> {
               ),
             ]),
           ),
+          if (_inAir(p)) ...[
+            SectionTitle(tr('Live', 'Live')),
+            LiveFlightCard(
+              target: LiveTarget(
+                from: p.from,
+                to: p.to,
+                callsign: p.callsign.isNotEmpty ? p.callsign : (guessCallsign(p.carrier, p.flightNumber) ?? ''),
+                icao24: p.icao24,
+                title: p.flightCode,
+              ),
+            ),
+          ],
           SectionTitle(tr('Bilet', 'Pass')),
           InfoTable([
             (tr('Pasager', 'Passenger'), p.passenger, null),
@@ -229,6 +242,14 @@ class _PassDetailPageState extends State<PassDetailPage> {
         ]),
       ),
     );
+  }
+
+  /// From a little before departure until a while after the planned landing.
+  static bool _inAir(FlightPass p) {
+    final dep = Store.departureOf(p).add(Duration(minutes: p.delayMinutes));
+    final now = DateTime.now();
+    return now.isAfter(dep.subtract(const Duration(minutes: 30))) &&
+        now.isBefore(dep.add(flightDuration(p)).add(const Duration(hours: 1)));
   }
 
   (String, String, String?) _airportRow(String role, String iata) {

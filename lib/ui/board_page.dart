@@ -8,6 +8,8 @@ import '../models/pass.dart';
 import '../services/board_api.dart';
 import '../services/status_api.dart';
 import '../services/store.dart';
+import '../core/airlines.dart';
+import 'live_card.dart';
 import 'widgets.dart';
 
 /// Airport tab: departures / arrivals board for a saved airport.
@@ -261,7 +263,19 @@ class _BoardPageState extends State<BoardPage> {
           : late
               ? const Color(0xFFE65100)
               : cs.onSurfaceVariant;
-      return Container(
+      final parts = f.number.split(' ');
+      final target = LiveTarget(
+        from: departures ? store.boardAirport : f.otherIata,
+        to: departures ? f.otherIata : store.boardAirport,
+        callsign: f.callsign.isNotEmpty
+            ? f.callsign
+            : (parts.length == 2 ? guessCallsign(parts[0], parts[1]) ?? '' : ''),
+        icao24: f.icao24,
+        title: f.number,
+      );
+      return InkWell(
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => LivePage(target: target))),
+        child: Container(
         color: mine ? cs.primaryContainer.withValues(alpha: 0.55) : null,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -302,6 +316,7 @@ class _BoardPageState extends State<BoardPage> {
                   style: t.bodySmall?.copyWith(color: statusColor, fontWeight: FontWeight.w600)),
             ),
         ]),
+        ),
       );
     }
 

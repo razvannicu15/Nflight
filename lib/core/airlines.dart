@@ -69,6 +69,25 @@ const _airlines = <String, Airline>{
   'LY': Airline('El Al', Color(0xFF00305F)),
 };
 
+/// IATA -> ICAO airline designator, used for radio callsigns (W6 3141 -> WZZ3141).
+const icaoAirline = {
+  'W6': 'WZZ', 'W4': 'WMT', 'W9': 'WUK', '5W': 'WAZ', 'FR': 'RYR', 'RK': 'RUK', 'AL': 'MAY',
+  'RO': 'ROT', 'H4': 'HYS', 'LH': 'DLH', 'OS': 'AUA', 'LX': 'SWR', 'SN': 'BEL', 'EW': 'EWG',
+  'KL': 'KLM', 'AF': 'AFR', 'BA': 'BAW', 'U2': 'EZY', 'EC': 'EJU', 'DS': 'EZS', 'TK': 'THY',
+  'PC': 'PGT', 'LO': 'LOT', 'A3': 'AEE', 'AZ': 'ITY', 'IB': 'IBE', 'VY': 'VLG', 'TP': 'TAP',
+  'SK': 'SAS', 'AY': 'FIN', 'DY': 'NOZ', 'LS': 'EXS', 'QR': 'QTR', 'EK': 'UAE', 'EY': 'ETD',
+  'FZ': 'FDB', 'KM': 'KMM', 'OU': 'CTN', 'JU': 'ASL', 'FB': 'LZB', 'BT': 'BTI', 'EI': 'EIN',
+  'UA': 'UAL', 'DL': 'DAL', 'AA': 'AAL', 'AC': 'ACA', 'SQ': 'SIA', 'CX': 'CPA', 'TO': 'TVF',
+  'HV': 'TRA', 'XQ': 'SXS', 'V7': 'VOE', 'EN': 'DLA', 'LG': 'LGL', 'MS': 'MSR', 'LY': 'ELY',
+};
+
+/// Best guess of the radio callsign; airlines sometimes use other ones.
+String? guessCallsign(String carrier, String number) {
+  final icao = icaoAirline[carrier.toUpperCase().trim()];
+  final n = number.replaceAll(RegExp(r'\s'), '').replaceFirst(RegExp(r'^0+'), '');
+  return icao == null || n.isEmpty ? null : '$icao$n';
+}
+
 class Airlines {
   static Airline? get(String code) => _airlines[code.toUpperCase().trim()];
   static String name(String code) => get(code)?.name ?? code;

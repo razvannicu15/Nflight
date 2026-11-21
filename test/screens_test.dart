@@ -14,6 +14,8 @@ import 'package:nflight/models/pass.dart';
 import 'package:nflight/services/store.dart';
 import 'package:nflight/services/board_api.dart';
 import 'package:nflight/ui/board_page.dart';
+import 'package:nflight/services/live_api.dart';
+import 'package:nflight/ui/live_card.dart';
 import 'package:nflight/ui/boarding_code_page.dart';
 import 'package:nflight/ui/edit_pass_page.dart';
 import 'package:nflight/ui/home_shell.dart';
@@ -153,6 +155,9 @@ void main() {
           b: Brightness.dark);
       await shot(t, '13_board', BoardPage(preview: demoBoard()));
       await shot(t, '14_board_dark', BoardPage(preview: demoBoard()), b: Brightness.dark);
+      final live = LiveState(lat: 48.9, lon: 12.4, altitudeM: 11280, speedKmh: 842, track: 292, onGround: false, seen: DateTime.now());
+      const target = LiveTarget(from: 'CLJ', to: 'LTN', callsign: 'WZZ3141', title: 'W6 3141');
+      await shot(t, '15_live', LivePage(target: target, tiles: false, preview: live));
       await shot(t, '11_edit', EditPassPage(existing: store.upcoming.first));
       store.passes.clear();
       await shot(t, '12_empty', const HomeShell(startServices: false));

@@ -42,6 +42,8 @@ class FlightPass {
     this.delayMinutes = 0,
     this.arrivalDelayMinutes = 0,
     this.aircraft = '',
+    this.callsign = '',
+    this.icao24 = '',
     this.archived = false,
     this.note = '',
     DateTime? createdAt,
@@ -79,6 +81,10 @@ class FlightPass {
   /// Delay at arrival (what EU 261 compensation is based on).
   int arrivalDelayMinutes;
   String aircraft;
+
+  /// From live status: radio callsign and transponder (Mode S) hex, to find the plane.
+  String callsign;
+  String icao24;
   bool archived;
   String note;
   final DateTime createdAt;
@@ -130,6 +136,8 @@ class FlightPass {
         'delay': delayMinutes,
         'arrDelay': arrivalDelayMinutes,
         'ac': aircraft,
+        'cs': callsign,
+        'icao24': icao24,
         'arch': archived,
         'note': note,
         'created': createdAt.toIso8601String(),
@@ -161,6 +169,8 @@ class FlightPass {
         delayMinutes: (j['delay'] as num?)?.toInt() ?? 0,
         arrivalDelayMinutes: (j['arrDelay'] as num?)?.toInt() ?? 0,
         aircraft: j['ac'] ?? '',
+        callsign: j['cs'] ?? '',
+        icao24: j['icao24'] ?? '',
         archived: j['arch'] == true,
         note: j['note'] ?? '',
         createdAt: DateTime.tryParse(j['created'] ?? ''),

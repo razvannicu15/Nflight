@@ -24,7 +24,12 @@ class BoardFlight {
     this.status = '',
     this.label,
     this.cancelledFlag = false,
+    this.callsign = '',
+    this.icao24 = '',
   });
+
+  final String callsign;
+  final String icao24;
 
   final String number; // "W6 3141"
   final String airline;
@@ -116,6 +121,8 @@ class BoardApi {
               status: f.status,
               label: f.statusText.isNotEmpty ? null : x.label,
               cancelledFlag: f.cancelled || x.cancelled,
+              callsign: f.callsign,
+              icao24: f.icao24,
             );
           }(),
       ];
@@ -363,7 +370,10 @@ class BoardApi {
       final st = m['scheduledTime'];
       final day = st is Map ? (st['local'] ?? '').toString() : '';
       final iata = (ap['iata'] ?? '').toString();
+      final ac = e['aircraft'] is Map ? e['aircraft'] as Map : const {};
       out.add(BoardFlight(
+        callsign: (e['callSign'] ?? '').toString().replaceAll(' ', ''),
+        icao24: (ac['modeS'] ?? '').toString().toLowerCase(),
         number: (e['number'] ?? '').toString(),
         airline: e['airline'] is Map ? ((e['airline'] as Map)['name'] ?? '').toString() : '',
         otherIata: iata,
