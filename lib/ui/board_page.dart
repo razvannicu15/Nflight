@@ -230,6 +230,7 @@ class _BoardPageState extends State<BoardPage> {
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
           child: Row(children: [
             SizedBox(width: 62, child: Text(tr('ORA', 'TIME'), style: header)),
+            const SizedBox(width: 38),
             Expanded(child: Text(departures ? tr('SPRE', 'TO') : tr('DIN', 'FROM'), style: header)),
             if (showPlace)
               SizedBox(
@@ -294,6 +295,10 @@ class _BoardPageState extends State<BoardPage> {
                     style: t.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant, decoration: TextDecoration.lineThrough, fontFeatures: tab)),
             ]),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 10, top: 2),
+            child: AirlineBadge(parts.isNotEmpty ? parts[0] : '', size: 28),
           ),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

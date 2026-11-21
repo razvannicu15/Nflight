@@ -165,7 +165,7 @@ class _LivePageState extends State<LivePage> with _LivePolling<LivePage> {
     final t = widget.target;
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: Text(t.title.isEmpty ? '${t.from} – ${t.to}' : t.title)),
+      appBar: AppBar(titleSpacing: 0, title: _title(context, t)),
       body: Column(children: [
         Expanded(child: LiveMap(target: t, state: state, tiles: widget.tiles, interactive: true)),
         Container(
@@ -185,34 +185,36 @@ class _LivePageState extends State<LivePage> with _LivePolling<LivePage> {
     );
   }
 
+  /// [logo] FR 7603 / Ryanair · RYR59BU · B738
+  Widget _title(BuildContext context, LiveTarget t) {
+    final tt = Theme.of(context).textTheme;
+    final cs = Theme.of(context).colorScheme;
+    final carrier = t.carrier.isNotEmpty ? t.carrier : t.title.split(' ').first;
+    final sub = [
+      Airlines.name(carrier),
+      if (state?.callsign.isNotEmpty == true) state!.callsign,
+      if (aircraft?.typecode.isNotEmpty == true) aircraft!.typecode,
+    ].join(' · ');
+    return Row(children: [
+      AirlineBadge(carrier, size: 36),
+      const SizedBox(width: 12),
+      Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+          Text(t.title.isEmpty ? '${t.from} – ${t.to}' : t.title,
+              style: tt.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+          Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+        ]),
+      ),
+    ]);
+  }
+
   Widget _panel(BuildContext context, LiveTarget t, LiveState s) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final carrier = t.carrier.isNotEmpty ? t.carrier : (t.title.split(' ').first);
     final model = aircraft?.model.isNotEmpty == true ? aircraft!.model : t.aircraft;
     final reg = aircraft?.registration ?? '';
-    Widget chip(String text) => Container(
-          margin: const EdgeInsets.only(right: 6),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          decoration: BoxDecoration(color: cs.surfaceContainerHighest, borderRadius: BorderRadius.circular(8)),
-          child: Text(text, style: tt.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
-        );
     return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-      Row(children: [
-        AirlineBadge(carrier, size: 40),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(Airlines.name(carrier), style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-            const SizedBox(height: 4),
-            Row(children: [
-              if (s.callsign.isNotEmpty) chip(s.callsign),
-              if (aircraft?.typecode.isNotEmpty == true) chip(aircraft!.typecode),
-            ]),
-          ]),
-        ),
-      ]),
-      const SizedBox(height: 18),
       RouteProgress(target: t, state: s, large: true),
       const SizedBox(height: 18),
       LiveNumbers(target: t, state: s, withVertical: true),
@@ -397,9 +399,11 @@ class LiveMap extends StatelessWidget {
           child: Text(code, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: cs.onSurface)),
         );
 
-    return FlutterMap(
+    // Re-fit to the whole route whenever the map size changes or the plane first appears.
+    return LayoutBuilder(builder: (context, c) => FlutterMap(
+      key: ValueKey('${c.maxWidth.round()}x${c.maxHeight.round()}-${plane != null}-${flown.length > 2}'),
       options: MapOptions(
-        initialCameraFit: CameraFit.bounds(bounds: bounds, padding: const EdgeInsets.all(36)),
+        initialCameraFit: CameraFit.bounds(bounds: bounds, padding: const EdgeInsets.fromLTRB(40, 40, 40, 40)),
         backgroundColor: dark ? const Color(0xFF1B1E24) : const Color(0xFFE8EDF2),
         interactionOptions: InteractionOptions(
             flags: interactive ? InteractiveFlag.all & ~InteractiveFlag.rotate : InteractiveFlag.none),
@@ -441,6 +445,6 @@ class LiveMap extends StatelessWidget {
             attributions: [TextSourceAttribution('OpenStreetMap contributors')],
           ),
       ],
-    );
+    ));
   }
 }
