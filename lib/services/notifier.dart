@@ -6,6 +6,7 @@ import '../core/airlines.dart';
 import '../core/airports.dart';
 import '../models/pass.dart';
 import 'store.dart';
+import '../core/i18n.dart';
 
 /// Departure reminders and the "your pass is ready" notification.
 class Notifier {
@@ -13,10 +14,11 @@ class Notifier {
   static void Function(String passId)? onOpen;
   static String? launchPassId;
 
-  static const _channel = AndroidNotificationDetails(
+  static AndroidNotificationDetails get _channel => AndroidNotificationDetails(
     'flights',
-    'Zboruri',
-    channelDescription: 'Mementouri înainte de plecare și biletul de îmbarcare',
+    tr('Zboruri', 'Flights'),
+    channelDescription: tr('Mementouri înainte de plecare și biletul de îmbarcare',
+        'Reminders before departure and your boarding pass'),
     importance: Importance.high,
     priority: Priority.high,
     category: AndroidNotificationCategory.reminder,
@@ -68,21 +70,21 @@ class Notifier {
     final airline = Airlines.name(p.carrier);
     final where = [
       if (p.terminal.isNotEmpty) 'Terminal ${p.terminal}',
-      if (p.gate.isNotEmpty) 'Poarta ${p.gate}',
-      if (p.seat.isNotEmpty) 'Loc ${p.seat}',
+      if (p.gate.isNotEmpty) '${tr('Poarta', 'Gate')} ${p.gate}',
+      if (p.seat.isNotEmpty) '${tr('Loc', 'Seat')} ${p.seat}',
     ].join(' · ');
-    final time = p.departure == null ? '' : ' la ${hmOf(p)}';
+    final time = p.departure == null ? '' : ' ${tr('la', 'at')} ${hmOf(p)}';
 
     final items = <(int, Duration, String, String)>[
       if (store.remind24h)
-        (0, const Duration(hours: 24), 'Mâine zbori: ${p.flightCode}',
+        (0, const Duration(hours: 24), tr('Mâine zbori: ${p.flightCode}', 'Flying tomorrow: ${p.flightCode}'),
             '$city$time · $airline'),
       if (store.remind3h)
-        (1, const Duration(hours: 3), '${p.flightCode} pleacă în 3 ore',
+        (1, const Duration(hours: 3), tr('${p.flightCode} pleacă în 3 ore', '${p.flightCode} departs in 3 hours'),
             [city, if (where.isNotEmpty) where].join(' · ')),
       if (store.remindBoarding)
-        (2, const Duration(minutes: 45), 'Îmbarcare ${p.flightCode}',
-            'Atinge ca să deschizi biletul${where.isEmpty ? '' : ' · $where'}'),
+        (2, const Duration(minutes: 45), tr('Îmbarcare ${p.flightCode}', 'Boarding ${p.flightCode}'),
+            '${tr('Atinge ca să deschizi biletul', 'Tap to open your pass')}${where.isEmpty ? '' : ' · $where'}'),
     ];
     for (final it in items) {
       final at = dep.subtract(it.$2);
@@ -92,7 +94,7 @@ class Notifier {
         it.$3,
         it.$4,
         tz.TZDateTime.from(at, tz.UTC),
-        const NotificationDetails(android: _channel),
+        NotificationDetails(android: _channel),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
@@ -104,7 +106,7 @@ class Notifier {
   /// Immediate notification, e.g. when live status reports a change.
   static Future<void> showNow(FlightPass p, String title, String body) async {
     await _plugin.show(_base(p) + 3, title, body,
-        const NotificationDetails(android: _channel), payload: p.id);
+        NotificationDetails(android: _channel), payload: p.id);
   }
 
   static String hmOf(FlightPass p) {

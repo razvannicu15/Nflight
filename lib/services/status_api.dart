@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../models/pass.dart';
 import 'notifier.dart';
 import 'store.dart';
+import '../core/i18n.dart';
 
 /// Live flight status through AeroDataBox (RapidAPI). The user brings their
 /// own free key in Settings; without a key nothing is requested.
@@ -15,7 +16,7 @@ class StatusApi {
 
   /// Updates [p] in place. Returns an error message, or null on success.
   static Future<String?> refresh(FlightPass p, {bool notify = false}) async {
-    if (!enabled) return 'Adaugă cheia API în Setări pentru status live.';
+    if (!enabled) return tr('Adaugă cheia API în Setări pentru status live.', 'Add an API key in Settings for live status.');
     final number = '${p.carrier}${p.flightNumber}';
     final uri = Uri.https(host, '/flights/number/$number/${p.date}',
         {'withAircraftImage': 'false', 'withLocation': 'false'});
@@ -24,12 +25,12 @@ class StatusApi {
         'X-RapidAPI-Key': store.apiKey.trim(),
         'X-RapidAPI-Host': host,
       }).timeout(const Duration(seconds: 20));
-      if (r.statusCode == 204 || r.body.trim().isEmpty) return 'Zborul nu a fost găsit încă.';
-      if (r.statusCode == 401 || r.statusCode == 403) return 'Cheie API invalidă.';
-      if (r.statusCode == 429) return 'Limita lunară a cheii API a fost atinsă.';
-      if (r.statusCode != 200) return 'Eroare server (${r.statusCode}).';
+      if (r.statusCode == 204 || r.body.trim().isEmpty) return tr('Zborul nu a fost găsit încă.', 'Flight not found yet.');
+      if (r.statusCode == 401 || r.statusCode == 403) return tr('Cheie API invalidă.', 'Invalid API key.');
+      if (r.statusCode == 429) return tr('Limita lunară a cheii API a fost atinsă.', 'Monthly API key limit reached.');
+      if (r.statusCode != 200) return tr('Eroare server (${r.statusCode}).', 'Server error (${r.statusCode}).');
       final list = jsonDecode(r.body);
-      if (list is! List || list.isEmpty) return 'Zborul nu a fost găsit încă.';
+      if (list is! List || list.isEmpty) return tr('Zborul nu a fost găsit încă.', 'Flight not found yet.');
       Map<String, dynamic> f = Map<String, dynamic>.from(list.first as Map);
       for (final e in list) {
         final m = Map<String, dynamic>.from(e as Map);
@@ -43,13 +44,13 @@ class StatusApi {
       p.statusCheckedAt = DateTime.now();
       final after = (p.status, p.delayMinutes, p.gate, p.departure);
       if (notify && before != after) {
-        await Notifier.showNow(p, '${p.flightCode}: ${statusLabels[p.status]}', changeText(p));
+        await Notifier.showNow(p, '${p.flightCode}: ${statusLabel(p.status)}', changeText(p));
       }
       store.upsert(p);
       await Notifier.schedule(p);
       return null;
     } catch (e) {
-      return 'Fără conexiune la serviciul de status.';
+      return tr('Fără conexiune la serviciul de status.', 'Cannot reach the status service.');
     }
   }
 
@@ -105,8 +106,8 @@ class StatusApi {
   }
 
   static String changeText(FlightPass p) => [
-        if (p.delayMinutes >= 5) 'Întârziere ${p.delayMinutes} min · pleacă la ${Notifier.hmOf(p)}',
-        if (p.gate.isNotEmpty) 'Poarta ${p.gate}',
+        if (p.delayMinutes >= 5) tr('Întârziere ${p.delayMinutes} min · pleacă la ${Notifier.hmOf(p)}', 'Delayed ${p.delayMinutes} min · departs ${Notifier.hmOf(p)}'),
+        if (p.gate.isNotEmpty) '${tr('Poarta', 'Gate')} ${p.gate}',
       ].join(' · ');
 
   /// Refreshes flights departing in the next 36 hours (saves API calls).

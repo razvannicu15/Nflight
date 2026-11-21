@@ -6,6 +6,7 @@ import '../models/pass.dart';
 import '../services/native.dart';
 import '../services/store.dart';
 import 'widgets.dart';
+import '../core/i18n.dart';
 
 /// Opens the full-screen code for [p] and everyone else on the same booking.
 void openBoardingCode(BuildContext context, FlightPass p) {
@@ -59,8 +60,8 @@ class _BoardingCodePageState extends State<BoardingCodePage> {
           backgroundColor: Colors.white,
           foregroundColor: ink,
           title: Text(widget.passes.length > 1
-              ? 'Pasager ${_page + 1} din ${widget.passes.length}'
-              : 'Bilet de îmbarcare'),
+              ? tr('Pasager ${_page + 1} din ${widget.passes.length}', 'Passenger ${_page + 1} of ${widget.passes.length}')
+              : tr('Bilet de îmbarcare', 'Boarding pass')),
         ),
         body: SafeArea(
           child: Column(children: [
@@ -123,20 +124,20 @@ class _BoardingCodePageState extends State<BoardingCodePage> {
               backgroundColor: Colors.white,
               width: square ? w * 0.82 : w,
               height: square ? w * 0.82 : w * 0.36,
-              errorBuilder: (_, e) => const Text('Codul nu poate fi afișat.'),
+              errorBuilder: (_, e) => Text(tr('Codul nu poate fi afișat.', 'The code cannot be shown.')),
             ),
           ),
           const SizedBox(height: 28),
           Row(children: [
-            Expanded(child: _cell('De la', p.from)),
-            Expanded(child: _cell('Spre', p.to)),
-            Expanded(child: _cell('Loc', p.seat)),
+            Expanded(child: _cell(tr('De la', 'From'), p.from)),
+            Expanded(child: _cell(tr('Spre', 'To'), p.to)),
+            Expanded(child: _cell(tr('Loc', 'Seat'), p.seat)),
           ]),
           const SizedBox(height: 16),
           Row(children: [
-            Expanded(child: _cell('Poarta', p.gate)),
-            Expanded(child: _cell('Îmbarcare', p.boarding ?? '')),
-            Expanded(child: _cell('Secvență', p.sequence)),
+            Expanded(child: _cell(tr('Poarta', 'Gate'), p.gate)),
+            Expanded(child: _cell(tr('Îmbarcare', 'Boarding'), p.boarding ?? '')),
+            Expanded(child: _cell(tr('Secvență', 'Seq.'), p.sequence)),
           ]),
         ]),
       );

@@ -4,6 +4,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../core/bcbp.dart';
 import '../services/importer.dart';
+import '../core/i18n.dart';
 
 /// Live camera scanner. Pops with the boarding codes it found.
 class ScanPage extends StatefulWidget {
@@ -33,7 +34,7 @@ class _ScanPageState extends State<ScanPage> {
         Navigator.pop(context, [ScannedCode(v, formatName(b.format))]);
         return;
       }
-      setState(() => _hint = 'Codul găsit nu este un bilet de îmbarcare.');
+      setState(() => _hint = tr('Codul găsit nu este un bilet de îmbarcare.', 'That code is not a boarding pass.'));
     }
   }
 
@@ -44,7 +45,7 @@ class _ScanPageState extends State<ScanPage> {
     final codes = await Importer.scanImage(path);
     if (!mounted) return;
     if (codes.isEmpty) {
-      setState(() => _hint = 'Nu am găsit niciun cod în imagine.');
+      setState(() => _hint = tr('Nu am găsit niciun cod în imagine.', 'No code found in the image.'));
       return;
     }
     _done = true;
@@ -62,10 +63,10 @@ class _ScanPageState extends State<ScanPage> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
-        title: const Text('Scanează biletul'),
+        title: Text(tr('Scanează biletul', 'Scan your pass')),
         actions: [
           IconButton(
-            tooltip: 'Lanternă',
+            tooltip: tr('Lanternă', 'Flashlight'),
             icon: const Icon(Icons.flashlight_on_outlined),
             onPressed: () => _ctl.toggleTorch(),
           ),
@@ -79,7 +80,7 @@ class _ScanPageState extends State<ScanPage> {
           right: 24,
           top: window.bottom + 24,
           child: Text(
-            _hint ?? 'Încadrează codul de pe bilet (pătrat sau dreptunghiular).',
+            _hint ?? tr('Încadrează codul de pe bilet (pătrat sau dreptunghiular).', 'Fit the code from your pass in the frame (square or rectangular).'),
             textAlign: TextAlign.center,
             style: const TextStyle(color: Colors.white, fontSize: 15),
           ),
@@ -92,7 +93,7 @@ class _ScanPageState extends State<ScanPage> {
             child: FilledButton.tonalIcon(
               onPressed: _fromGallery,
               icon: const Icon(Icons.photo_library_outlined),
-              label: const Text('Din galerie'),
+              label: Text(tr('Din galerie', 'From gallery')),
             ),
           ),
         ),

@@ -1,6 +1,6 @@
 # Nflight
 
-Portofel de bilete de îmbarcare pentru **Android**, în stil Material 3, **fără reclame și fără cont**.
+Portofel de bilete de îmbarcare pentru **Android**, în stil Material 3, **fără reclame și fără cont**. Română + English, temă luminoasă / întunecată.
 
 ## Funcții
 

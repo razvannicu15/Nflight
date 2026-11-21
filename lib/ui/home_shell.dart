@@ -11,6 +11,7 @@ import 'pass_detail_page.dart';
 import 'settings_page.dart';
 import 'stats_page.dart';
 import 'trips_page.dart';
+import '../core/i18n.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -79,23 +80,29 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           ? FloatingActionButton.extended(
               onPressed: () => showAddSheet(context),
               icon: const Icon(Icons.add),
-              label: const Text('Adaugă'),
+              label: Text(tr('Adaugă', 'Add')),
             )
           : null,
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),
-        destinations: const [
+        destinations: [
           NavigationDestination(
-              icon: Icon(Icons.flight_takeoff_outlined),
-              selectedIcon: Icon(Icons.flight_takeoff),
-              label: 'Zboruri'),
+              icon: const Icon(Icons.flight_takeoff_outlined),
+              selectedIcon: const Icon(Icons.flight_takeoff),
+              label: tr('Zboruri', 'Flights')),
           NavigationDestination(
-              icon: Icon(Icons.history_outlined), selectedIcon: Icon(Icons.history), label: 'Istoric'),
+              icon: const Icon(Icons.history_outlined),
+              selectedIcon: const Icon(Icons.history),
+              label: tr('Istoric', 'History')),
           NavigationDestination(
-              icon: Icon(Icons.insights_outlined), selectedIcon: Icon(Icons.insights), label: 'Statistici'),
+              icon: const Icon(Icons.insights_outlined),
+              selectedIcon: const Icon(Icons.insights),
+              label: tr('Statistici', 'Stats')),
           NavigationDestination(
-              icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'Setări'),
+              icon: const Icon(Icons.settings_outlined),
+              selectedIcon: const Icon(Icons.settings),
+              label: tr('Setări', 'Settings')),
         ],
       ),
     );

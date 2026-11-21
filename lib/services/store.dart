@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../core/airports.dart';
+import '../core/i18n.dart';
 import '../models/pass.dart';
 
 /// All app data: passes + settings, kept in one JSON file on the phone.
@@ -12,6 +13,9 @@ class Store extends ChangeNotifier {
   final List<FlightPass> passes = [];
 
   ThemeMode themeMode = ThemeMode.system;
+
+  /// 'system' | 'ro' | 'en'
+  String language = 'system';
   String apiKey = '';
   bool remind24h = true;
   bool remind3h = true;
@@ -23,7 +27,10 @@ class Store extends ChangeNotifier {
   Future<void> load() async {
     final dir = await getApplicationDocumentsDirectory();
     _file = File('${dir.path}/nflight.json');
-    if (!await _file!.exists()) return;
+    if (!await _file!.exists()) {
+      setLanguage(language);
+      return;
+    }
     try {
       final j = jsonDecode(await _file!.readAsString()) as Map<String, dynamic>;
       passes
@@ -34,6 +41,7 @@ class Store extends ChangeNotifier {
       themeMode = ThemeMode.values.firstWhere((m) => m.name == s['theme'],
           orElse: () => ThemeMode.system);
       apiKey = s['apiKey'] ?? '';
+      language = s['lang'] ?? 'system';
       remind24h = s['r24'] ?? true;
       remind3h = s['r3'] ?? true;
       remindBoarding = s['rb'] ?? true;
@@ -42,6 +50,7 @@ class Store extends ChangeNotifier {
       // Corrupt file: keep a copy instead of losing it.
       await _file!.copy('${_file!.path}.bak');
     }
+    setLanguage(language);
   }
 
   Map<String, dynamic> toJson() => {
@@ -50,6 +59,7 @@ class Store extends ChangeNotifier {
         'settings': {
           'theme': themeMode.name,
           'apiKey': apiKey,
+          'lang': language,
           'r24': remind24h,
           'r3': remind3h,
           'rb': remindBoarding,
@@ -58,6 +68,7 @@ class Store extends ChangeNotifier {
       };
 
   Future<void> save() async {
+    setLanguage(language);
     notifyListeners();
     final f = _file;
     if (f == null) return;

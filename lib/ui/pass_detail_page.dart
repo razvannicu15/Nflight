@@ -11,6 +11,7 @@ import 'boarding_code_page.dart';
 import 'compensation_sheet.dart';
 import 'edit_pass_page.dart';
 import 'widgets.dart';
+import '../core/i18n.dart';
 
 class PassDetailPage extends StatefulWidget {
   const PassDetailPage({super.key, required this.passId});
@@ -28,7 +29,7 @@ class _PassDetailPageState extends State<PassDetailPage> {
     if (!mounted) return;
     setState(() => _busy = false);
     ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(err ?? 'Status actualizat')));
+        .showSnackBar(SnackBar(content: Text(err ?? tr('Status actualizat', 'Status updated'))));
   }
 
   Future<void> _menu(FlightPass p, String v) async {
@@ -48,17 +49,17 @@ class _PassDetailPageState extends State<PassDetailPage> {
         await Clipboard.setData(ClipboardData(text: shareText(p)));
         if (mounted) {
           ScaffoldMessenger.of(context)
-              .showSnackBar(const SnackBar(content: Text('Detaliile zborului au fost copiate')));
+              .showSnackBar(SnackBar(content: Text(tr('Detaliile zborului au fost copiate', 'Flight details copied'))));
         }
       case 'delete':
         final ok = await showDialog<bool>(
           context: context,
           builder: (c) => AlertDialog(
-            title: const Text('Ștergi biletul?'),
+            title: Text(tr('Ștergi biletul?', 'Delete this pass?')),
             content: Text('${p.flightCode} · ${p.route} · ${p.passenger}'),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Anulează')),
-              FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Șterge')),
+              TextButton(onPressed: () => Navigator.pop(c, false), child: Text(tr('Anulează', 'Cancel'))),
+              FilledButton(onPressed: () => Navigator.pop(c, true), child: Text(tr('Șterge', 'Delete'))),
             ],
           ),
         );
@@ -96,7 +97,7 @@ class _PassDetailPageState extends State<PassDetailPage> {
         actions: [
           if (StatusApi.enabled)
             IconButton(
-              tooltip: 'Actualizează status',
+              tooltip: tr('Actualizează status', 'Refresh status'),
               onPressed: _busy ? null : () => _refresh(p),
               icon: _busy
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
@@ -105,14 +106,14 @@ class _PassDetailPageState extends State<PassDetailPage> {
           PopupMenuButton<String>(
             onSelected: (v) => _menu(p, v),
             itemBuilder: (_) => [
-              const PopupMenuItem(value: 'edit', child: ListTile(leading: Icon(Icons.edit_outlined), title: Text('Editează'))),
-              const PopupMenuItem(value: 'share', child: ListTile(leading: Icon(Icons.copy_outlined), title: Text('Copiază detaliile'))),
+              PopupMenuItem(value: 'edit', child: ListTile(leading: const Icon(Icons.edit_outlined), title: Text(tr('Editează', 'Edit')))),
+              PopupMenuItem(value: 'share', child: ListTile(leading: const Icon(Icons.copy_outlined), title: Text(tr('Copiază detaliile', 'Copy details')))),
               PopupMenuItem(
                   value: 'archive',
                   child: ListTile(
                       leading: Icon(p.archived ? Icons.unarchive_outlined : Icons.archive_outlined),
-                      title: Text(p.archived ? 'Scoate din arhivă' : 'Arhivează'))),
-              const PopupMenuItem(value: 'delete', child: ListTile(leading: Icon(Icons.delete_outline), title: Text('Șterge'))),
+                      title: Text(p.archived ? tr('Scoate din arhivă', 'Unarchive') : tr('Arhivează', 'Archive')))),
+              PopupMenuItem(value: 'delete', child: ListTile(leading: const Icon(Icons.delete_outline), title: Text(tr('Șterge', 'Delete')))),
             ],
           ),
         ],
@@ -142,14 +143,14 @@ class _PassDetailPageState extends State<PassDetailPage> {
                 RouteHeader(p, large: true),
                 if (upcoming && p.departure != null) ...[
                   const SizedBox(height: 14),
-                  Text('Pleacă ${countdown(dep)}',
+                  Text(tr('Pleacă ${countdown(dep)}', 'Departs ${countdown(dep)}'),
                       style: t.titleSmall?.copyWith(color: cs.primary, fontWeight: FontWeight.w700)),
                 ],
                 if (p.departure == null) ...[
                   const SizedBox(height: 14),
                   ActionChip(
                     avatar: const Icon(Icons.schedule, size: 18),
-                    label: Text(StatusApi.enabled ? 'Ora plecării: actualizează status' : 'Adaugă ora plecării'),
+                    label: Text(StatusApi.enabled ? tr('Ora plecării: actualizează status', 'Departure time: refresh status') : tr('Adaugă ora plecării', 'Add departure time')),
                     onPressed: () => StatusApi.enabled
                         ? _refresh(p)
                         : Navigator.of(context).push(
@@ -159,9 +160,9 @@ class _PassDetailPageState extends State<PassDetailPage> {
                 const SizedBox(height: 20),
                 _grid([
                   InfoCell('Terminal', p.terminal, big: true),
-                  InfoCell('Poarta', p.gate, big: true),
-                  InfoCell('Îmbarcare', p.boarding ?? '', big: true),
-                  InfoCell('Loc', p.seat, big: true),
+                  InfoCell(tr('Poarta', 'Gate'), p.gate, big: true),
+                  InfoCell(tr('Îmbarcare', 'Boarding'), p.boarding ?? '', big: true),
+                  InfoCell(tr('Loc', 'Seat'), p.seat, big: true),
                 ]),
                 const SizedBox(height: 20),
                 SizedBox(
@@ -170,63 +171,63 @@ class _PassDetailPageState extends State<PassDetailPage> {
                     onPressed: p.barcode.isEmpty ? null : () => openBoardingCode(context, p),
                     icon: const Icon(Icons.qr_code_2),
                     label: Text(companions.isEmpty
-                        ? 'Arată biletul'
-                        : 'Arată biletele (${companions.length + 1} pasageri)'),
+                        ? tr('Arată biletul', 'Show pass')
+                        : tr('Arată biletele (${companions.length + 1} pasageri)', 'Show passes (${companions.length + 1} passengers)')),
                     style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
                   ),
                 ),
               ]),
             ),
           ),
-          const SectionTitle('Pasager'),
+          SectionTitle(tr('Pasager', 'Passenger')),
           _infoCard(context, [
-            InfoCell('Nume', p.passenger),
-            InfoCell('Rezervare (PNR)', p.pnr),
-            InfoCell('Clasă', p.cabin),
-            InfoCell('Secvență', p.sequence),
-            if (p.frequentFlyer.isNotEmpty) InfoCell('Fidelitate', p.frequentFlyer),
-            if (p.aircraft.isNotEmpty) InfoCell('Avion', p.aircraft),
+            InfoCell(tr('Nume', 'Name'), p.passenger),
+            InfoCell(tr('Rezervare (PNR)', 'Booking (PNR)'), p.pnr),
+            InfoCell(tr('Clasă', 'Cabin'), p.cabin),
+            InfoCell(tr('Secvență', 'Sequence'), p.sequence),
+            if (p.frequentFlyer.isNotEmpty) InfoCell(tr('Fidelitate', 'Frequent flyer'), p.frequentFlyer),
+            if (p.aircraft.isNotEmpty) InfoCell(tr('Avion', 'Aircraft'), p.aircraft),
           ]),
           if (companions.isNotEmpty) ...[
-            const SectionTitle('Pe aceeași rezervare'),
+            SectionTitle(tr('Pe aceeași rezervare', 'On the same booking')),
             for (final c in companions)
               ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 24),
                 leading: const CircleAvatar(child: Icon(Icons.person_outline)),
                 title: Text(c.passenger),
-                subtitle: Text(c.seat.isEmpty ? 'Fără loc' : 'Loc ${c.seat}'),
+                subtitle: Text(c.seat.isEmpty ? tr('Fără loc', 'No seat') : '${tr('Loc', 'Seat')} ${c.seat}'),
                 onTap: () => Navigator.of(context).pushReplacement(
                     MaterialPageRoute(builder: (_) => PassDetailPage(passId: c.id))),
               ),
           ],
-          const SectionTitle('Aeroporturi'),
-          _airport(context, p.from, 'Plecare'),
-          _airport(context, p.to, 'Sosire'),
+          SectionTitle(tr('Aeroporturi', 'Airports')),
+          _airport(context, p.from, tr('Plecare', 'Departure')),
+          _airport(context, p.to, tr('Sosire', 'Arrival')),
           if (dist > 0)
             ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 24),
               leading: const Icon(Icons.straighten),
               title: Text('${km(dist)} km'),
-              subtitle: Text('Durată ${durationText(flightDuration(p))}'
-                  '${p.departure != null && p.arrival != null ? '' : ' (estimată)'}'),
+              subtitle: Text('${tr('Durată', 'Duration')} ${durationText(flightDuration(p))}'
+                  '${p.departure != null && p.arrival != null ? '' : tr(' (estimată)', ' (estimated)')}'),
             ),
-          const SectionTitle('Ajutor'),
+          SectionTitle(tr('Ajutor', 'Help')),
           ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 24),
             leading: const Icon(Icons.euro),
-            title: const Text('Compensație pentru întârziere sau anulare'),
-            subtitle: const Text('Calcul orientativ după regulamentul UE 261/2004'),
+            title: Text(tr('Compensație pentru întârziere sau anulare', 'Compensation for delay or cancellation')),
+            subtitle: Text(tr('Calcul orientativ după regulamentul UE 261/2004', 'Rough estimate under EU Regulation 261/2004')),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => showCompensationSheet(context, p),
           ),
           if (p.note.isNotEmpty) ...[
-            const SectionTitle('Notă'),
+            SectionTitle(tr('Notă', 'Note')),
             Padding(padding: const EdgeInsets.symmetric(horizontal: 24), child: Text(p.note)),
           ],
           if (p.statusCheckedAt != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-              child: Text('Status verificat la ${hm(p.statusCheckedAt!)}',
+              child: Text(tr('Status verificat la ${hm(p.statusCheckedAt!)}', 'Status checked at ${hm(p.statusCheckedAt!)}'),
                   style: t.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
             ),
         ]),
@@ -269,7 +270,7 @@ class _PassDetailPageState extends State<PassDetailPage> {
       subtitle: Text([
         role,
         if (a != null) a.name,
-        if (a != null && a.tz.isNotEmpty) 'ora locală ${hm(now)}$offset',
+        if (a != null && a.tz.isNotEmpty) tr('ora locală ${hm(now)}$offset', 'local time ${hm(now)}$offset'),
       ].join(' · ')),
     );
   }
@@ -278,7 +279,7 @@ class _PassDetailPageState extends State<PassDetailPage> {
     if (d.inMinutes == 0) return '';
     final sign = d.isNegative ? '−' : '+';
     final m = d.inMinutes.abs();
-    return ' ($sign${m ~/ 60}${m % 60 == 0 ? '' : ':${two(m % 60)}'} h față de tine)';
+    return ' ($sign${m ~/ 60}${m % 60 == 0 ? '' : ':${two(m % 60)}'} h${tr(' față de tine', ' from you')})';
   }
 }
 
@@ -286,10 +287,10 @@ String shareText(FlightPass p) {
   final lines = [
     '${p.flightCode} ${Airlines.name(p.carrier)}',
     '${Airports.city(p.from)} (${p.from}) → ${Airports.city(p.to)} (${p.to})',
-    [longDate(p.day), if (p.departure != null) 'plecare ${Notifier.hmOf(p)}', if (p.arrival != null) 'sosire ${p.arrival}']
+    [longDate(p.day), if (p.departure != null) '${tr('plecare', 'departs')} ${Notifier.hmOf(p)}', if (p.arrival != null) '${tr('sosire', 'arrives')} ${p.arrival}']
         .join(', '),
-    if (p.status != FlightStatus.unknown) 'Status: ${statusLabels[p.status]}',
-    if (p.gate.isNotEmpty) 'Poarta ${p.gate}',
+    if (p.status != FlightStatus.unknown) 'Status: ${statusLabel(p.status)}',
+    if (p.gate.isNotEmpty) '${tr('Poarta', 'Gate')} ${p.gate}',
   ];
   return lines.join('\n');
 }

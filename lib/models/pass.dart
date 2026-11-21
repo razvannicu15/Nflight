@@ -1,17 +1,18 @@
 import 'dart:math';
+import '../core/i18n.dart';
 
 enum FlightStatus { unknown, scheduled, delayed, boarding, departed, landed, cancelled, diverted }
 
-const statusLabels = {
-  FlightStatus.unknown: '',
-  FlightStatus.scheduled: 'La timp',
-  FlightStatus.delayed: 'Întârziat',
-  FlightStatus.boarding: 'Îmbarcare',
-  FlightStatus.departed: 'A decolat',
-  FlightStatus.landed: 'A aterizat',
-  FlightStatus.cancelled: 'Anulat',
-  FlightStatus.diverted: 'Deviat',
-};
+String statusLabel(FlightStatus s) => switch (s) {
+      FlightStatus.unknown => '',
+      FlightStatus.scheduled => tr('La timp', 'On time'),
+      FlightStatus.delayed => tr('Întârziat', 'Delayed'),
+      FlightStatus.boarding => tr('Îmbarcare', 'Boarding'),
+      FlightStatus.departed => tr('A decolat', 'Departed'),
+      FlightStatus.landed => tr('A aterizat', 'Landed'),
+      FlightStatus.cancelled => tr('Anulat', 'Cancelled'),
+      FlightStatus.diverted => tr('Deviat', 'Diverted'),
+    };
 
 /// One flight leg with its boarding pass. Times are local to the airport
 /// (wall clock), kept as "yyyy-MM-ddTHH:mm" strings so they never shift

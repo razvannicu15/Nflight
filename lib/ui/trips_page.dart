@@ -7,6 +7,7 @@ import 'add_flow.dart';
 import 'boarding_code_page.dart';
 import 'pass_detail_page.dart';
 import 'widgets.dart';
+import '../core/i18n.dart';
 
 class TripsPage extends StatelessWidget {
   const TripsPage({super.key, required this.history});
@@ -35,7 +36,7 @@ class TripsPage extends StatelessWidget {
           body: NestedScrollView(
             headerSliverBuilder: (c, _) => [
               SliverAppBar.medium(
-                title: Text(history ? 'Istoric' : 'Zborurile mele'),
+                title: Text(history ? tr('Istoric', 'History') : tr('Zborurile mele', 'My flights')),
               ),
             ],
             body: history || !StatusApi.enabled
@@ -116,19 +117,19 @@ class _EmptyTrips extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 20),
-        Text('Niciun zbor încă', textAlign: TextAlign.center, style: t.headlineSmall),
+        Text(tr('Niciun zbor încă', 'No flights yet'), textAlign: TextAlign.center, style: t.headlineSmall),
         const SizedBox(height: 6),
-        Text('Adaugă primul bilet de îmbarcare. Rămâne doar pe telefonul tău și merge fără internet.',
+        Text(tr('Adaugă primul bilet de îmbarcare. Rămâne doar pe telefonul tău și merge fără internet.', 'Add your first boarding pass. It stays on your phone and works offline.'),
             textAlign: TextAlign.center, style: t.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
         const SizedBox(height: 24),
-        step(1, 'Fă check-in online', 'În aplicația sau pe site-ul companiei aeriene.'),
-        step(2, 'Ia biletul', 'PDF-ul primit pe e-mail, o captură de ecran sau biletul tipărit.'),
-        step(3, 'Adaugă-l aici', 'Apasă „Adaugă” sau trimite fișierul spre Nflight din „Distribuie”.'),
+        step(1, tr('Fă check-in online', 'Check in online'), tr('În aplicația sau pe site-ul companiei aeriene.', 'In the airline app or on its website.')),
+        step(2, tr('Ia biletul', 'Get the pass'), tr('PDF-ul primit pe e-mail, o captură de ecran sau biletul tipărit.', 'The PDF from your email, a screenshot or the printed pass.')),
+        step(3, tr('Adaugă-l aici', 'Add it here'), tr('Apasă „Adaugă” sau trimite fișierul spre Nflight din „Distribuie”.', 'Tap “Add” or send the file to Nflight from “Share”.')),
         const SizedBox(height: 20),
         FilledButton.icon(
           onPressed: () => showAddSheet(context),
           icon: const Icon(Icons.add),
-          label: const Text('Adaugă un bilet'),
+          label: Text(tr('Adaugă un bilet', 'Add a pass')),
           style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
         ),
       ]),
@@ -147,7 +148,7 @@ class _EmptyHistory extends StatelessWidget {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.history, size: 56, color: cs.onSurfaceVariant),
           const SizedBox(height: 12),
-          Text('Zborurile încheiate apar aici.',
+          Text(tr('Zborurile încheiate apar aici.', 'Past flights show up here.'),
               textAlign: TextAlign.center, style: TextStyle(color: cs.onSurfaceVariant)),
         ]),
       ),

@@ -103,6 +103,23 @@ void main() {
     return s;
   });
 
+  // Some plugins still compile against an old Android API; Flutter needs 36+.
+  patch('android/build.gradle.kts', (s) {
+    if (s.contains('nflight-compileSdk')) return s;
+    return '''$s
+// nflight-compileSdk: raise old plugins to the API level Flutter requires.
+subprojects {
+    plugins.withId("com.android.library") {
+        afterEvaluate {
+            extensions.configure<com.android.build.gradle.LibraryExtension>("android") {
+                if ((compileSdk ?: 0) < 36) compileSdk = 36
+            }
+        }
+    }
+}
+''';
+  });
+
   final kt = File('tool/android/MainActivity.kt');
   final ktDir = Directory('android/app/src/main/kotlin/ro/noraz/nflight');
   if (kt.existsSync() && ktDir.existsSync()) {

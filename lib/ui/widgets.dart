@@ -4,28 +4,38 @@ import '../core/airlines.dart';
 import '../core/airports.dart';
 import '../models/pass.dart';
 import '../services/store.dart';
+import '../core/i18n.dart';
 
 const _months = ['ian.', 'feb.', 'mar.', 'apr.', 'mai', 'iun.', 'iul.', 'aug.', 'sept.', 'oct.', 'nov.', 'dec.'];
 const _monthsLong = ['ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie', 'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie'];
 const _days = ['lun.', 'mar.', 'mie.', 'joi', 'vin.', 'sâm.', 'dum.'];
 const _daysLong = ['luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbătă', 'duminică'];
 
-String shortDate(DateTime d) => '${_days[d.weekday - 1]} ${d.day} ${_months[d.month - 1]}';
+const _monthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const _monthsLongEn = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const _daysEn = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const _daysLongEn = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+String shortDate(DateTime d) => isEn
+    ? '${_daysEn[d.weekday - 1]} ${d.day} ${_monthsEn[d.month - 1]}'
+    : '${_days[d.weekday - 1]} ${d.day} ${_months[d.month - 1]}';
 String longDate(DateTime d) {
   final y = d.year == DateTime.now().year ? '' : ' ${d.year}';
-  return '${_daysLong[d.weekday - 1]}, ${d.day} ${_monthsLong[d.month - 1]}$y';
+  return isEn
+      ? '${_daysLongEn[d.weekday - 1]}, ${d.day} ${_monthsLongEn[d.month - 1]}$y'
+      : '${_daysLong[d.weekday - 1]}, ${d.day} ${_monthsLong[d.month - 1]}$y';
 }
 
-String monthName(int m) => _monthsLong[m - 1];
+String monthName(int m) => isEn ? _monthsLongEn[m - 1] : _monthsLong[m - 1];
 
 /// "în 2 zile", "în 3 h 20 min", "a plecat".
 String countdown(DateTime target) {
   final d = target.difference(DateTime.now());
-  if (d.isNegative) return d.inHours > -6 ? 'a plecat' : 'încheiat';
-  if (d.inDays >= 2) return 'în ${d.inDays} zile';
-  if (d.inHours >= 24) return 'mâine';
-  if (d.inHours >= 1) return 'în ${d.inHours} h ${d.inMinutes % 60} min';
-  return 'în ${d.inMinutes} min';
+  if (d.isNegative) return d.inHours > -6 ? tr('a plecat', 'departed') : tr('încheiat', 'done');
+  if (d.inDays >= 2) return tr('în ${d.inDays} zile', 'in ${d.inDays} days');
+  if (d.inHours >= 24) return tr('mâine', 'tomorrow');
+  if (d.inHours >= 1) return tr('în ${d.inHours} h ${d.inMinutes % 60} min', 'in ${d.inHours} h ${d.inMinutes % 60} min');
+  return tr('în ${d.inMinutes} min', 'in ${d.inMinutes} min');
 }
 
 String durationText(Duration d) {
@@ -37,7 +47,7 @@ String km(num v) {
   final s = v.round().toString();
   final b = StringBuffer();
   for (var i = 0; i < s.length; i++) {
-    if (i > 0 && (s.length - i) % 3 == 0) b.write('.');
+    if (i > 0 && (s.length - i) % 3 == 0) b.write(isEn ? ',' : '.');
     b.write(s[i]);
   }
   return b.toString();
@@ -110,7 +120,7 @@ class StatusChip extends StatelessWidget {
       FlightStatus.departed || FlightStatus.landed => (cs.secondaryContainer, cs.onSecondaryContainer),
       _ => (const Color(0xFFD5F2DC), const Color(0xFF0D5223)),
     };
-    var text = statusLabels[s]!;
+    var text = statusLabel(s);
     if (s == FlightStatus.delayed && pass.delayMinutes > 0) text += ' ${pass.delayMinutes} min';
     return Container(
       padding: EdgeInsets.symmetric(horizontal: dense ? 8 : 10, vertical: dense ? 2 : 4),
@@ -298,7 +308,7 @@ class NextFlightCard extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
-              Text('URMĂTORUL ZBOR',
+              Text(tr('URMĂTORUL ZBOR', 'NEXT FLIGHT'),
                   style: t.labelMedium?.copyWith(
                       color: cs.onPrimaryContainer, letterSpacing: 1.2, fontWeight: FontWeight.w700)),
               const Spacer(),
@@ -311,10 +321,10 @@ class NextFlightCard extends StatelessWidget {
             RouteHeader(p, large: true, onColor: cs.onPrimaryContainer),
             const SizedBox(height: 16),
             Row(children: [
-              Expanded(child: _cell(context, 'Zbor', p.flightCode)),
+              Expanded(child: _cell(context, tr('Zbor', 'Flight'), p.flightCode)),
               Expanded(child: _cell(context, 'Terminal', p.terminal)),
-              Expanded(child: _cell(context, 'Poarta', p.gate)),
-              Expanded(child: _cell(context, 'Loc', p.seat)),
+              Expanded(child: _cell(context, tr('Poarta', 'Gate'), p.gate)),
+              Expanded(child: _cell(context, tr('Loc', 'Seat'), p.seat)),
             ]),
             const SizedBox(height: 16),
             SizedBox(
@@ -322,7 +332,7 @@ class NextFlightCard extends StatelessWidget {
               child: FilledButton.icon(
                 onPressed: p.barcode.isEmpty ? null : onShowCode,
                 icon: const Icon(Icons.qr_code_2),
-                label: const Text('Arată biletul'),
+                label: Text(tr('Arată biletul', 'Show pass')),
                 style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
               ),
             ),

@@ -7,6 +7,7 @@ import '../services/notifier.dart';
 import '../services/status_api.dart';
 import '../services/store.dart';
 import 'widgets.dart';
+import '../core/i18n.dart';
 
 /// Add a flight by hand or correct an imported one.
 class EditPassPage extends StatefulWidget {
@@ -82,8 +83,8 @@ class _EditPassPageState extends State<EditPassPage> {
 
   String? _iata(String? v) {
     final s = (v ?? '').trim().toUpperCase();
-    if (!RegExp(r'^[A-Z]{3}$').hasMatch(s)) return 'Cod de 3 litere';
-    if (Airports.get(s) == null) return 'Aeroport necunoscut';
+    if (!RegExp(r'^[A-Z]{3}$').hasMatch(s)) return tr('Cod de 3 litere', '3-letter code');
+    if (Airports.get(s) == null) return tr('Aeroport necunoscut', 'Unknown airport');
     return null;
   }
 
@@ -95,28 +96,28 @@ class _EditPassPageState extends State<EditPassPage> {
     final upper = [UpperCaseFormatter()];
     return Scaffold(
       appBar: AppBar(
-        title: Text(e == null ? 'Zbor nou' : 'Editează zborul'),
-        actions: [TextButton(onPressed: _save, child: const Text('Salvează'))],
+        title: Text(e == null ? tr('Zbor nou', 'New flight') : tr('Editează zborul', 'Edit flight')),
+        actions: [TextButton(onPressed: _save, child: Text(tr('Salvează', 'Save')))],
       ),
       body: MaxWidth(
         child: Form(
           key: _form,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-            Text('Zbor', style: t.titleSmall?.copyWith(color: cs.primary)),
+            Text(tr('Zbor', 'Flight'), style: t.titleSmall?.copyWith(color: cs.primary)),
             gap,
             Row(children: [
-              Expanded(child: _airportField(_from, 'De la', upper)),
+              Expanded(child: _airportField(_from, tr('De la', 'From'), upper)),
               gap,
-              Expanded(child: _airportField(_to, 'Spre', upper)),
+              Expanded(child: _airportField(_to, tr('Spre', 'To'), upper)),
             ]),
             gap,
             Row(children: [
               Expanded(
                 child: TextFormField(
                   controller: _carrier,
-                  decoration: const InputDecoration(labelText: 'Companie', hintText: 'W6'),
+                  decoration: InputDecoration(labelText: tr('Companie', 'Airline'), hintText: 'W6'),
                   inputFormatters: [...upper, LengthLimitingTextInputFormatter(3)],
-                  validator: (v) => (v ?? '').trim().length < 2 ? 'Ex: W6, RO, FR' : null,
+                  validator: (v) => (v ?? '').trim().length < 2 ? tr('Ex: W6, RO, FR', 'E.g. W6, RO, FR') : null,
                 ),
               ),
               gap,
@@ -124,14 +125,14 @@ class _EditPassPageState extends State<EditPassPage> {
                 flex: 2,
                 child: TextFormField(
                   controller: _number,
-                  decoration: const InputDecoration(labelText: 'Număr zbor', hintText: '3141'),
+                  decoration: InputDecoration(labelText: tr('Număr zbor', 'Flight number'), hintText: '3141'),
                   inputFormatters: [...upper, LengthLimitingTextInputFormatter(5)],
-                  validator: (v) => (v ?? '').trim().isEmpty ? 'Obligatoriu' : null,
+                  validator: (v) => (v ?? '').trim().isEmpty ? tr('Obligatoriu', 'Required') : null,
                 ),
               ),
             ]),
             gap,
-            _tile(Icons.event, 'Data', longDate(_date), () async {
+            _tile(Icons.event, tr('Data', 'Date'), longDate(_date), () async {
               final d = await showDatePicker(
                 context: context,
                 initialDate: _date,
@@ -141,36 +142,36 @@ class _EditPassPageState extends State<EditPassPage> {
               if (d != null) setState(() => _date = d);
             }),
             Row(children: [
-              Expanded(child: _tile(Icons.flight_takeoff, 'Plecare', _dep ?? '—', () => _pickTime(_dep, (v) => _dep = v))),
-              Expanded(child: _tile(Icons.flight_land, 'Sosire', _arr ?? '—', () => _pickTime(_arr, (v) => _arr = v))),
+              Expanded(child: _tile(Icons.flight_takeoff, tr('Plecare', 'Departure'), _dep ?? '—', () => _pickTime(_dep, (v) => _dep = v))),
+              Expanded(child: _tile(Icons.flight_land, tr('Sosire', 'Arrival'), _arr ?? '—', () => _pickTime(_arr, (v) => _arr = v))),
             ]),
-            _tile(Icons.door_front_door_outlined, 'Îmbarcare', _boarding ?? '—',
+            _tile(Icons.door_front_door_outlined, tr('Îmbarcare', 'Boarding'), _boarding ?? '—',
                 () => _pickTime(_boarding, (v) => _boarding = v)),
-            Text('Orele sunt cele locale ale fiecărui aeroport, ca pe bilet.',
+            Text(tr('Orele sunt cele locale ale fiecărui aeroport, ca pe bilet.', 'Times are local to each airport, as on the pass.'),
                 style: t.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
             const SizedBox(height: 20),
-            Text('Bilet', style: t.titleSmall?.copyWith(color: cs.primary)),
+            Text(tr('Bilet', 'Pass'), style: t.titleSmall?.copyWith(color: cs.primary)),
             gap,
-            TextFormField(controller: _pax, decoration: const InputDecoration(labelText: 'Pasager')),
+            TextFormField(controller: _pax, decoration: InputDecoration(labelText: tr('Pasager', 'Passenger'))),
             gap,
             Row(children: [
-              Expanded(child: TextFormField(controller: _pnr, inputFormatters: upper, decoration: const InputDecoration(labelText: 'Rezervare (PNR)'))),
+              Expanded(child: TextFormField(controller: _pnr, inputFormatters: upper, decoration: InputDecoration(labelText: tr('Rezervare (PNR)', 'Booking (PNR)')))),
               gap,
-              Expanded(child: TextFormField(controller: _seat, inputFormatters: upper, decoration: const InputDecoration(labelText: 'Loc'))),
+              Expanded(child: TextFormField(controller: _seat, inputFormatters: upper, decoration: InputDecoration(labelText: tr('Loc', 'Seat')))),
             ]),
             gap,
             Row(children: [
               Expanded(child: TextFormField(controller: _terminal, decoration: const InputDecoration(labelText: 'Terminal'))),
               gap,
-              Expanded(child: TextFormField(controller: _gate, decoration: const InputDecoration(labelText: 'Poarta'))),
+              Expanded(child: TextFormField(controller: _gate, decoration: InputDecoration(labelText: tr('Poarta', 'Gate')))),
             ]),
             gap,
-            TextFormField(controller: _note, maxLines: 3, minLines: 1, decoration: const InputDecoration(labelText: 'Notă')),
+            TextFormField(controller: _note, maxLines: 3, minLines: 1, decoration: InputDecoration(labelText: tr('Notă', 'Note'))),
             const SizedBox(height: 24),
             FilledButton(
               onPressed: _save,
               style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-              child: const Text('Salvează'),
+              child: Text(tr('Salvează', 'Save')),
             ),
           ]),
         ),

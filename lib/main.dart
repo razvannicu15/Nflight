@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'core/airports.dart';
+import 'core/i18n.dart';
 import 'services/native.dart';
 import 'services/notifier.dart';
 import 'services/store.dart';
@@ -48,6 +49,7 @@ class NflightApp extends StatelessWidget {
     return ListenableBuilder(
       listenable: store,
       builder: (context, _) => MaterialApp(
+        key: ValueKey(currentLang),
         navigatorKey: navigatorKey,
         title: 'Nflight',
         debugShowCheckedModeBanner: false,

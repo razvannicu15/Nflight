@@ -5,6 +5,7 @@ import '../core/airports.dart';
 import '../models/pass.dart';
 import '../services/store.dart';
 import 'widgets.dart';
+import '../core/i18n.dart';
 
 enum _Period { all, year, month }
 
@@ -40,25 +41,26 @@ class _StatsPageState extends State<StatsPage> {
         final f = _flights();
         return Scaffold(
           body: NestedScrollView(
-            headerSliverBuilder: (c, _) => [const SliverAppBar.medium(title: Text('Statistici'))],
+            headerSliverBuilder: (c, _) => [SliverAppBar.medium(title: Text(tr('Statistici', 'Stats')))],
             body: MaxWidth(
               child: ListView(padding: const EdgeInsets.only(bottom: 32), children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
                   child: SegmentedButton<_Period>(
-                    segments: const [
-                      ButtonSegment(value: _Period.all, label: Text('Total')),
-                      ButtonSegment(value: _Period.year, label: Text('Anul ăsta')),
-                      ButtonSegment(value: _Period.month, label: Text('Luna asta')),
+                    segments: [
+                      ButtonSegment(value: _Period.all, label: Text(tr('Total', 'All time'))),
+                      ButtonSegment(value: _Period.year, label: Text(tr('Anul ăsta', 'This year'))),
+                      ButtonSegment(value: _Period.month, label: Text(tr('Luna asta', 'This month'))),
                     ],
                     selected: {_period},
                     onSelectionChanged: (s) => setState(() => _period = s.first),
                   ),
                 ),
                 if (f.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.all(32),
-                    child: Text('Statisticile apar după primul zbor încheiat.', textAlign: TextAlign.center),
+                  Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Text(tr('Statisticile apar după primul zbor încheiat.', 'Stats appear after your first completed flight.'),
+                        textAlign: TextAlign.center),
                   )
                 else
                   ..._stats(context, f),
@@ -153,47 +155,49 @@ class _StatsPageState extends State<StatsPage> {
         padding: const EdgeInsets.symmetric(horizontal: 11),
         child: Column(children: [
           Row(children: [
-            big('${f.length}', f.length == 1 ? 'zbor' : 'zboruri', Icons.flight),
-            big(km(total), 'kilometri', Icons.public),
+            big('${f.length}', f.length == 1 ? tr('zbor', 'flight') : tr('zboruri', 'flights'), Icons.flight),
+            big(km(total), tr('kilometri', 'kilometres'), Icons.public),
           ]),
           Row(children: [
-            big(durationText(air), 'în aer', Icons.schedule),
-            big('${airports.length}', 'aeroporturi · ${countries.length} țări', Icons.place_outlined),
+            big(durationText(air), tr('în aer', 'in the air'), Icons.schedule),
+            big('${airports.length}', tr('aeroporturi · ${countries.length} țări', 'airports · ${countries.length} countries'), Icons.place_outlined),
           ]),
         ]),
       ),
       Padding(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
         child: Text(
-          'Echivalentul a ${(total / 40075).toStringAsFixed(2)} ocoluri ale Pământului'
-          '${total > 384400 ? ' sau ${(total / 384400).toStringAsFixed(1)} drumuri până la Lună' : ''}.',
+          tr('Echivalentul a ${(total / 40075).toStringAsFixed(2)} ocoluri ale Pământului'
+              '${total > 384400 ? ' sau ${(total / 384400).toStringAsFixed(1)} drumuri până la Lună' : ''}.',
+              'That is ${(total / 40075).toStringAsFixed(2)} times around the Earth'
+              '${total > 384400 ? ' or ${(total / 384400).toStringAsFixed(1)} trips to the Moon' : ''}.'),
           style: t.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
         ),
       ),
-      const SectionTitle('Recorduri'),
+      SectionTitle(tr('Recorduri', 'Records')),
       ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 24),
         leading: const Icon(Icons.trending_up),
-        title: Text('Cel mai lung: ${byLen.last.from} → ${byLen.last.to}'),
+        title: Text('${tr('Cel mai lung', 'Longest')}: ${byLen.last.from} → ${byLen.last.to}'),
         subtitle: Text('${km(dist(byLen.last))} km · ${shortDate(byLen.last.day)} ${byLen.last.day.year}'),
       ),
       if (f.length > 1)
         ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 24),
           leading: const Icon(Icons.trending_down),
-          title: Text('Cel mai scurt: ${byLen.first.from} → ${byLen.first.to}'),
+          title: Text('${tr('Cel mai scurt', 'Shortest')}: ${byLen.first.from} → ${byLen.first.to}'),
           subtitle: Text('${km(dist(byLen.first))} km · ${shortDate(byLen.first.day)} ${byLen.first.day.year}'),
         ),
       if (window + aisle > 0)
         ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 24),
           leading: const Icon(Icons.event_seat_outlined),
-          title: Text(window >= aisle ? 'Preferi geamul' : 'Preferi culoarul'),
-          subtitle: Text('$window la geam · $aisle la culoar'),
+          title: Text(window >= aisle ? tr('Preferi geamul', 'You prefer the window') : tr('Preferi culoarul', 'You prefer the aisle')),
+          subtitle: Text(tr('$window la geam · $aisle la culoar', '$window window · $aisle aisle')),
         ),
-      ranking('Rute', routes, (k) => k),
-      ranking('Companii', airlines, Airlines.name, lead: (k) => AirlineBadge(k, size: 28)),
-      ranking('Aeroporturi', ports, (k) => '${Airports.city(k)} ($k)',
+      ranking(tr('Rute', 'Routes'), routes, (k) => k),
+      ranking(tr('Companii', 'Airlines'), airlines, Airlines.name, lead: (k) => AirlineBadge(k, size: 28)),
+      ranking(tr('Aeroporturi', 'Airports'), ports, (k) => '${Airports.city(k)} ($k)',
           lead: (k) => Text(flag(Airports.get(k)?.country ?? ''), style: const TextStyle(fontSize: 20))),
     ];
   }

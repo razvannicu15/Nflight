@@ -9,6 +9,7 @@ import '../services/store.dart';
 import 'edit_pass_page.dart';
 import 'pass_detail_page.dart';
 import 'scan_page.dart';
+import '../core/i18n.dart';
 
 Future<void> showAddSheet(BuildContext context) async {
   final choice = await showModalBottomSheet<String>(
@@ -17,13 +18,15 @@ Future<void> showAddSheet(BuildContext context) async {
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-          child: Text('Adaugă un bilet de îmbarcare', style: Theme.of(c).textTheme.titleLarge),
+          child: Text(tr('Adaugă un bilet de îmbarcare', 'Add a boarding pass'), style: Theme.of(c).textTheme.titleLarge),
         ),
-        _opt(c, 'camera', Icons.qr_code_scanner, 'Scanează cu camera',
-            'Bilet pe hârtie sau pe alt ecran'),
-        _opt(c, 'file', Icons.upload_file, 'Din fișier',
-            'PDF-ul de la companie, captură de ecran, poză sau .pkpass'),
-        _opt(c, 'manual', Icons.edit_note, 'Manual', 'Zbor fără bilet digital'),
+        _opt(c, 'camera', Icons.qr_code_scanner, tr('Scanează cu camera', 'Scan with camera'),
+            tr('Bilet pe hârtie sau pe alt ecran', 'Paper pass or another screen')),
+        _opt(c, 'file', Icons.upload_file, tr('Din fișier', 'From a file'),
+            tr('PDF-ul de la companie, captură de ecran, poză sau .pkpass',
+                'Airline PDF, screenshot, photo or .pkpass')),
+        _opt(c, 'manual', Icons.edit_note, tr('Manual', 'Manually'),
+            tr('Zbor fără bilet digital', 'Flight without a digital pass')),
         const SizedBox(height: 8),
       ]),
     ),
@@ -61,14 +64,14 @@ Future<T> runWithProgress<T>(BuildContext context, Future<T> job) async {
   showDialog<void>(
     context: context,
     barrierDismissible: false,
-    builder: (_) => const PopScope(
+    builder: (_) => PopScope(
       canPop: false,
       child: Center(child: Card(child: Padding(
-        padding: EdgeInsets.all(24),
+        padding: const EdgeInsets.all(24),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          CircularProgressIndicator(),
-          SizedBox(width: 20),
-          Text('Caut codul de îmbarcare…'),
+          const CircularProgressIndicator(),
+          const SizedBox(width: 20),
+          Text(tr('Caut codul de îmbarcare…', 'Looking for the boarding code…')),
         ]),
       ))),
     ),
@@ -85,9 +88,9 @@ Future<void> saveImported(BuildContext context, ImportResult res) async {
   final messenger = ScaffoldMessenger.of(context);
   if (res.passes.isEmpty) {
     messenger.showSnackBar(SnackBar(
-      content: Text(res.error ?? 'Nu am găsit niciun bilet.'),
+      content: Text(res.error ?? tr('Nu am găsit niciun bilet.', 'No pass found.')),
       action: SnackBarAction(
-        label: 'Manual',
+        label: tr('Manual', 'Manually'),
         onPressed: () => Navigator.of(context)
             .push(MaterialPageRoute(builder: (_) => const EditPassPage())),
       ),
@@ -103,8 +106,9 @@ Future<void> saveImported(BuildContext context, ImportResult res) async {
   }
   messenger.showSnackBar(SnackBar(
       content: Text(saved.length == 1
-          ? 'Bilet salvat: ${saved.first.flightCode}, ${saved.first.route}'
-          : '${saved.length} zboruri salvate')));
+          ? tr('Bilet salvat: ${saved.first.flightCode}, ${saved.first.route}',
+              'Pass saved: ${saved.first.flightCode}, ${saved.first.route}')
+          : tr('${saved.length} zboruri salvate', '${saved.length} flights saved'))));
   if (StatusApi.enabled) {
     for (final p in saved) {
       if (!Store.isPast(p)) StatusApi.refresh(p);

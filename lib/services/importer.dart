@@ -7,6 +7,7 @@ import 'package:pdfx/pdfx.dart';
 import '../core/bcbp.dart';
 import '../core/pkpass.dart';
 import '../models/pass.dart';
+import '../core/i18n.dart';
 
 /// A barcode read from somewhere: its text and symbology.
 class ScannedCode {
@@ -136,10 +137,10 @@ class Importer {
     try {
       if (lower.endsWith('.pkpass') || lower.endsWith('.pkpasses') || await _isZip(path)) {
         final pk = parsePkPass(await File(path).readAsBytes());
-        if (pk == null) return ImportResult([], error: 'Fișierul .pkpass nu a putut fi citit.');
+        if (pk == null) return ImportResult([], error: tr('Fișierul .pkpass nu a putut fi citit.', 'The .pkpass file could not be read.'));
         final passes = fromCode(ScannedCode(pk.message, pk.format), pk: pk);
         if (passes.isEmpty) {
-          return ImportResult([], error: 'Biletul din .pkpass nu are un cod de îmbarcare standard.');
+          return ImportResult([], error: tr('Biletul din .pkpass nu are un cod de îmbarcare standard.', 'The .pkpass has no standard boarding pass code.'));
         }
         return ImportResult(passes);
       }
@@ -148,20 +149,20 @@ class Importer {
           : await scanImage(path);
       return fromCodes(codes);
     } catch (e) {
-      return ImportResult([], error: 'Nu am putut citi fișierul.');
+      return ImportResult([], error: tr('Nu am putut citi fișierul.', 'Could not read the file.'));
     }
   }
 
   static ImportResult fromCodes(List<ScannedCode> codes) {
     if (codes.isEmpty) {
-      return ImportResult([], error: 'Nu am găsit niciun cod de îmbarcare în fișier.');
+      return ImportResult([], error: tr('Nu am găsit niciun cod de îmbarcare în fișier.', 'No boarding pass code found in the file.'));
     }
     final passes = <FlightPass>[];
     for (final c in codes) {
       passes.addAll(fromCode(c));
     }
     if (passes.isEmpty) {
-      return ImportResult([], error: 'Am găsit un cod, dar nu este un bilet de îmbarcare standard.');
+      return ImportResult([], error: tr('Am găsit un cod, dar nu este un bilet de îmbarcare standard.', 'Found a code, but it is not a standard boarding pass.'));
     }
     return ImportResult(passes);
   }
