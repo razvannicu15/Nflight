@@ -71,7 +71,8 @@ class Board {
 class BoardApi {
   static final Map<String, Board> _cache = {};
 
-  /// Airports that publish their own board (free, with gates): used instead of the API.
+  /// Airports that publish their own board (free, with gates). Backup only:
+  /// it fills what the API lacks, or stands in when the API is unavailable.
   static bool hasOwnSource(String iata) => iata == 'CLJ';
 
   /// Next ~11 hours (plus the last one) at [iata]. Cached for 3 minutes.
@@ -80,11 +81,50 @@ class BoardApi {
     if (!force && cached != null && DateTime.now().difference(cached.fetchedAt).inMinutes < 3) {
       return (cached, null);
     }
-    if (hasOwnSource(iata)) {
-      final r = await _loadCluj();
-      if (r.$1 != null) _cache[iata] = r.$1!;
-      return r;
+    final (api, err) = await _loadApi(iata);
+    if (!hasOwnSource(iata)) {
+      if (api != null) _cache[iata] = api;
+      return (api, err);
     }
+    final (own, _) = await _loadCluj();
+    final apiEmpty = api == null || (api.departures.isEmpty && api.arrivals.isEmpty);
+    final b = apiEmpty ? (own ?? api) : (own == null ? api : _merge(api, own));
+    if (b != null) _cache[iata] = b;
+    return (b, b == null ? err : null);
+  }
+
+  /// API rows win; the airport feed adds missing gate / belt / status.
+  static Board _merge(Board api, Board own) {
+    String norm(String n) => n.replaceAll(' ', '').toUpperCase();
+    List<BoardFlight> mix(List<BoardFlight> a, List<BoardFlight> o, bool departures) {
+      final byNo = {for (final f in o) '${norm(f.number)}|${f.day}': f};
+      return [
+        for (final f in a)
+          () {
+            final x = byNo['${norm(f.number)}|${f.day}'];
+            if (x == null) return f;
+            return BoardFlight(
+              number: f.number,
+              airline: f.airline,
+              otherIata: f.otherIata,
+              otherName: f.otherName,
+              scheduled: f.scheduled,
+              day: f.day,
+              revised: f.revised ?? x.revised,
+              terminal: f.terminal.isNotEmpty ? f.terminal : x.terminal,
+              gate: f.gate.isNotEmpty ? f.gate : x.gate,
+              status: f.status,
+              label: f.statusText.isNotEmpty ? null : x.label,
+              cancelledFlag: f.cancelled || x.cancelled,
+            );
+          }(),
+      ];
+    }
+
+    return Board(mix(api.departures, own.departures, true), mix(api.arrivals, own.arrivals, false), DateTime.now());
+  }
+
+  static Future<(Board?, String?)> _loadApi(String iata) async {
     if (!StatusApi.enabled) return (null, tr('Status live inactiv.', 'Live status is off.'));
     final now = Airports.nowAt(iata);
     String f(DateTime d) => '${ymd(d)}T${hm(d)}';
@@ -108,9 +148,7 @@ class BoardApi {
       if (r.statusCode == 204 || r.body.trim().isEmpty) return (Board([], [], DateTime.now()), null);
       if (r.statusCode != 200) return (null, tr('Eroare server (${r.statusCode}).', 'Server error (${r.statusCode}).'));
       final j = jsonDecode(r.body) as Map<String, dynamic>;
-      final b = Board(parse(j['departures']), parse(j['arrivals']), DateTime.now());
-      _cache[iata] = b;
-      return (b, null);
+      return (Board(parse(j['departures']), parse(j['arrivals']), DateTime.now()), null);
     } catch (_) {
       return (null, tr('Fără conexiune.', 'No connection.'));
     }
