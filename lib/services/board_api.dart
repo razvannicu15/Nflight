@@ -61,10 +61,10 @@ class Board {
 class BoardApi {
   static final Map<String, Board> _cache = {};
 
-  /// Next ~11 hours (plus the last one) at [iata]. Cached for 5 minutes.
+  /// Next ~11 hours (plus the last one) at [iata]. Cached for 3 minutes.
   static Future<(Board?, String?)> load(String iata, {bool force = false}) async {
     final cached = _cache[iata];
-    if (!force && cached != null && DateTime.now().difference(cached.fetchedAt).inMinutes < 5) {
+    if (!force && cached != null && DateTime.now().difference(cached.fetchedAt).inMinutes < 3) {
       return (cached, null);
     }
     if (!StatusApi.enabled) return (null, tr('Status live inactiv.', 'Live status is off.'));

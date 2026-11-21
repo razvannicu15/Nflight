@@ -7,6 +7,7 @@ import '../services/notifier.dart';
 import '../services/status_api.dart';
 import '../services/store.dart';
 import 'add_flow.dart';
+import 'board_page.dart';
 import 'pass_detail_page.dart';
 import 'settings_page.dart';
 import 'stats_page.dart';
@@ -77,6 +78,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final pages = [
       const TripsPage(history: false),
+      BoardPage(active: _tab == 1 && widget.startServices),
       const TripsPage(history: true),
       const StatsPage(),
       const SettingsPage(),
@@ -98,6 +100,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               icon: const Icon(Icons.flight_takeoff_outlined),
               selectedIcon: const Icon(Icons.flight_takeoff),
               label: tr('Zboruri', 'Flights')),
+          NavigationDestination(
+              icon: const Icon(Icons.connecting_airports_outlined),
+              selectedIcon: const Icon(Icons.connecting_airports),
+              label: tr('Aeroport', 'Airport')),
           NavigationDestination(
               icon: const Icon(Icons.history_outlined),
               selectedIcon: const Icon(Icons.history),

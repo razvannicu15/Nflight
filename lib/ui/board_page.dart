@@ -1,19 +1,20 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../core/airports.dart';
 import '../core/i18n.dart';
-import '../models/pass.dart';
 import '../services/board_api.dart';
+import '../services/status_api.dart';
+import '../services/store.dart';
 import 'widgets.dart';
 
-/// Airport departures / arrivals, like the screens in the terminal.
+/// Airport tab: departures / arrivals board for a saved airport.
 class BoardPage extends StatefulWidget {
-  const BoardPage({super.key, required this.iata, this.arrivals = false, this.highlight, this.preview});
-  final String iata;
-  final bool arrivals;
+  const BoardPage({super.key, this.active = true, this.preview});
 
-  /// The user's flight, marked in the list.
-  final FlightPass? highlight;
+  /// Only the visible tab talks to the network.
+  final bool active;
 
   /// Ready data (screenshot tests); skips the network.
   final Board? preview;
@@ -25,65 +26,167 @@ class BoardPage extends StatefulWidget {
 class _BoardPageState extends State<BoardPage> {
   Board? _board;
   String? _error;
-  bool _loading = true;
+  bool _loading = false;
+  String? _shown;
+  Timer? _timer;
+
+  String get _iata => store.boardAirport;
 
   @override
   void initState() {
     super.initState();
     if (widget.preview != null) {
       _board = widget.preview;
-      _loading = false;
-    } else {
-      _load();
+      _shown = _iata;
+    } else if (widget.active) {
+      _start();
     }
   }
 
+  @override
+  void didUpdateWidget(BoardPage old) {
+    super.didUpdateWidget(old);
+    if (widget.preview != null) return;
+    if (widget.active && !old.active) _start();
+    if (!widget.active && old.active) _timer?.cancel();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  /// Load now and keep the board fresh while the tab is open.
+  void _start() {
+    _load();
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(minutes: 3), (_) => _load());
+  }
+
   Future<void> _load({bool force = false}) async {
-    setState(() => _loading = _board == null);
-    final (b, err) = await BoardApi.load(widget.iata, force: force);
-    if (!mounted) return;
+    final iata = _iata;
+    setState(() {
+      _loading = _board == null || _shown != iata;
+      if (_shown != iata) _board = null;
+    });
+    final (b, err) = await BoardApi.load(iata, force: force);
+    if (!mounted || iata != _iata) return;
     setState(() {
       _loading = false;
+      _shown = iata;
       if (b != null) _board = b;
       _error = err;
     });
   }
 
+  void _select(String iata) {
+    if (iata == _iata) return;
+    store.boardAirport = iata;
+    store.save();
+    if (widget.preview == null) _load();
+  }
+
+  void _remove(String iata) {
+    if (store.boardAirports.length <= 1) return;
+    store.boardAirports.remove(iata);
+    if (store.boardAirport == iata) store.boardAirport = store.boardAirports.first;
+    store.save();
+    if (widget.preview == null) _load();
+  }
+
+  Future<void> _add() async {
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => const _AirportSearch(),
+    );
+    if (picked == null) return;
+    if (!store.boardAirports.contains(picked)) store.boardAirports.add(picked);
+    _select(picked);
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
-    final a = Airports.get(widget.iata);
-    return DefaultTabController(
-      length: 2,
-      initialIndex: widget.arrivals ? 1 : 0,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(a == null ? widget.iata : '${a.label} · ${widget.iata}'),
-          bottom: TabBar(tabs: [
-            Tab(text: tr('Plecări', 'Departures')),
-            Tab(text: tr('Sosiri', 'Arrivals')),
-          ]),
-        ),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _board == null
-                ? _message(_error ?? '')
-                : TabBarView(children: [
-                    _list(_board!.departures, departures: true),
-                    _list(_board!.arrivals, departures: false),
-                  ]),
-      ),
+    return ListenableBuilder(
+      listenable: store,
+      builder: (context, _) {
+        final a = Airports.get(_iata);
+        return DefaultTabController(
+          length: 2,
+          child: Scaffold(
+            body: NestedScrollView(
+              headerSliverBuilder: (c, _) => [
+                SliverAppBar.medium(
+                  title: Text(a?.label ?? _iata),
+                  pinned: true,
+                  bottom: PreferredSize(
+                    preferredSize: const Size.fromHeight(104),
+                    child: Column(children: [
+                      SizedBox(height: 56, child: _chips()),
+                      TabBar(tabs: [
+                        Tab(text: tr('Plecări', 'Departures')),
+                        Tab(text: tr('Sosiri', 'Arrivals')),
+                      ]),
+                    ]),
+                  ),
+                ),
+              ],
+              body: !StatusApi.enabled && widget.preview == null
+                  ? _message(tr('Status live inactiv', 'Live status is off'), retry: false)
+                  : _loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _board == null
+                          ? _message(_error ?? '')
+                          : TabBarView(children: [
+                              _list(_board!.departures, departures: true),
+                              _list(_board!.arrivals, departures: false),
+                            ]),
+            ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _message(String text) => Center(
+  Widget _chips() {
+    final list = store.boardAirports;
+    return ListView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      children: [
+        for (final code in list)
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: InputChip(
+              label: Text(code),
+              selected: code == _iata,
+              showCheckmark: false,
+              onSelected: (_) => _select(code),
+              onDeleted: code == _iata && list.length > 1 ? () => _remove(code) : null,
+            ),
+          ),
+        ActionChip(
+          avatar: const Icon(Icons.add, size: 18),
+          label: Text(tr('Adaugă', 'Add')),
+          onPressed: _add,
+        ),
+      ],
+    );
+  }
+
+  Widget _message(String text, {bool retry = true}) => Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Icon(Icons.cloud_off_outlined, size: 48, color: Theme.of(context).colorScheme.onSurfaceVariant),
             const SizedBox(height: 12),
             Text(text, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            FilledButton.tonal(onPressed: () => _load(force: true), child: Text(tr('Reîncearcă', 'Retry'))),
+            if (retry) ...[
+              const SizedBox(height: 16),
+              FilledButton.tonal(onPressed: () => _load(force: true), child: Text(tr('Reîncearcă', 'Retry'))),
+            ],
           ]),
         ),
       );
@@ -91,7 +194,7 @@ class _BoardPageState extends State<BoardPage> {
   Widget _list(List<BoardFlight> list, {required bool departures}) {
     final cs = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
-    final hl = widget.highlight;
+    final mineList = store.upcoming;
     if (list.isEmpty) {
       return RefreshIndicator(
         onRefresh: () => _load(force: true),
@@ -125,7 +228,7 @@ class _BoardPageState extends State<BoardPage> {
               );
             }
             final f = list[i - 1];
-            final mine = hl != null && f.matches(hl);
+            final mine = mineList.any(f.matches);
             final late = f.delayed && !f.cancelled;
             final statusColor = f.cancelled
                 ? cs.error
@@ -174,6 +277,55 @@ class _BoardPageState extends State<BoardPage> {
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+/// Type a code or city; pick from matches.
+class _AirportSearch extends StatefulWidget {
+  const _AirportSearch();
+  @override
+  State<_AirportSearch> createState() => _AirportSearchState();
+}
+
+class _AirportSearchState extends State<_AirportSearch> {
+  String _q = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final results = Airports.search(_q).take(30).toList();
+    final exact = results.where((a) => a.iata.toLowerCase() == _q.trim().toLowerCase());
+    final ordered = [...exact, ...results.where((a) => !exact.contains(a))];
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: SizedBox(
+        height: MediaQuery.sizeOf(context).height * 0.6,
+        child: Column(children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: TextField(
+              autofocus: true,
+              textCapitalization: TextCapitalization.characters,
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search),
+                hintText: tr('Cod sau oraș', 'Code or city'),
+              ),
+              onChanged: (v) => setState(() => _q = v),
+            ),
+          ),
+          Expanded(
+            child: ListView(children: [
+              for (final a in ordered)
+                ListTile(
+                  leading: CircleAvatar(child: Text(a.iata, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700))),
+                  title: Text(a.label),
+                  subtitle: Text(a.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  onTap: () => Navigator.pop(context, a.iata),
+                ),
+            ]),
+          ),
+        ]),
       ),
     );
   }

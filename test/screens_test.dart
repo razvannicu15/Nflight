@@ -54,6 +54,8 @@ FlightPass demo(String from, String to, String carrier, String no, DateTime day,
 }
 
 void seed() {
+  store.boardAirports = ['CLJ', 'OTP', 'LTN'];
+  store.boardAirport = 'CLJ';
   final now = DateTime.now();
   final d = DateTime(now.year, now.month, now.day);
   store.passes
@@ -128,20 +130,21 @@ void main() {
 
       await shot(t, '${pre}01_trips', const HomeShell(startServices: false));
       await shot(t, '${pre}02_detail', PassDetailPage(passId: id));
-      await shot(t, '${pre}03_stats', const HomeShell(startServices: false, initialTab: 2));
+      await shot(t, '${pre}03_stats', const HomeShell(startServices: false, initialTab: 3));
       if (lang == 'en') return;
       await shot(t, '04_trips_dark', const HomeShell(startServices: false), b: Brightness.dark);
       await shot(t, '05_detail_dark', PassDetailPage(passId: id), b: Brightness.dark);
-      await shot(t, '06_stats_dark', const HomeShell(startServices: false, initialTab: 2), b: Brightness.dark);
-      await shot(t, '07_history', const HomeShell(startServices: false, initialTab: 1));
-      await shot(t, '08_settings', const HomeShell(startServices: false, initialTab: 3));
+      await shot(t, '06_stats_dark', const HomeShell(startServices: false, initialTab: 3), b: Brightness.dark);
+      await shot(t, '07_history', const HomeShell(startServices: false, initialTab: 2));
+      await shot(t, '08_settings', const HomeShell(startServices: false, initialTab: 4));
       await shot(t, '09_add_sheet', const HomeShell(startServices: false), act: () async {
         await t.tap(find.byType(FloatingActionButton));
       });
       await shot(t, '10_code', BoardingCodePage(passes: [store.upcoming.first, ...store.companions(store.upcoming.first)]));
       await shot(t, '10_code_dark', BoardingCodePage(passes: [store.upcoming.first, ...store.companions(store.upcoming.first)]),
           b: Brightness.dark);
-      await shot(t, '13_board', BoardPage(iata: 'CLJ', highlight: store.upcoming.first, preview: demoBoard()));
+      await shot(t, '13_board', BoardPage(preview: demoBoard()));
+      await shot(t, '14_board_dark', BoardPage(preview: demoBoard()), b: Brightness.dark);
       await shot(t, '11_edit', EditPassPage(existing: store.upcoming.first));
       store.passes.clear();
       await shot(t, '12_empty', const HomeShell(startServices: false));

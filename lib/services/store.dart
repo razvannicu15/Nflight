@@ -16,6 +16,10 @@ class Store extends ChangeNotifier {
 
   /// 'system' | 'ro' | 'en'
   String language = 'system';
+
+  /// Airport tab: saved airports (chips) and the one shown.
+  List<String> boardAirports = ['CLJ'];
+  String boardAirport = 'CLJ';
   String apiKey = '';
   bool remind24h = true;
   bool remind3h = true;
@@ -42,6 +46,8 @@ class Store extends ChangeNotifier {
           orElse: () => ThemeMode.system);
       apiKey = s['apiKey'] ?? '';
       language = s['lang'] ?? 'system';
+      boardAirports = ((s['boardAirports'] as List?) ?? ['CLJ']).map((e) => e.toString()).toList();
+      boardAirport = s['boardAirport'] ?? (boardAirports.isEmpty ? 'CLJ' : boardAirports.first);
       remind24h = s['r24'] ?? true;
       remind3h = s['r3'] ?? true;
       remindBoarding = s['rb'] ?? true;
@@ -60,6 +66,8 @@ class Store extends ChangeNotifier {
           'theme': themeMode.name,
           'apiKey': apiKey,
           'lang': language,
+          'boardAirports': boardAirports,
+          'boardAirport': boardAirport,
           'r24': remind24h,
           'r3': remind3h,
           'rb': remindBoarding,
