@@ -22,7 +22,7 @@ class NflightApp extends StatelessWidget {
 
   static const seed = Color(0xFF2B5CE6);
 
-  ThemeData _theme(Brightness b) {
+  static ThemeData theme(Brightness b) {
     final scheme = ColorScheme.fromSeed(seedColor: seed, brightness: b);
     return ThemeData(
       useMaterial3: true,
@@ -54,8 +54,8 @@ class NflightApp extends StatelessWidget {
         title: 'Nflight',
         debugShowCheckedModeBanner: false,
         themeMode: store.themeMode,
-        theme: _theme(Brightness.light),
-        darkTheme: _theme(Brightness.dark),
+        theme: theme(Brightness.light),
+        darkTheme: theme(Brightness.dark),
         home: const HomeShell(),
       ),
     );

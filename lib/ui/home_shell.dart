@@ -14,17 +14,22 @@ import 'trips_page.dart';
 import '../core/i18n.dart';
 
 class HomeShell extends StatefulWidget {
-  const HomeShell({super.key});
+  const HomeShell({super.key, this.startServices = true, this.initialTab = 0});
+
+  /// False in screenshot tests: no plugins, no network.
+  final bool startServices;
+  final int initialTab;
   @override
   State<HomeShell> createState() => _HomeShellState();
 }
 
 class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
-  int _tab = 0;
+  late int _tab = widget.initialTab;
 
   @override
   void initState() {
     super.initState();
+    if (!widget.startServices) return;
     WidgetsBinding.instance.addObserver(this);
     Native.onFile = _openFile;
     Notifier.onOpen = _openPass;
@@ -42,13 +47,14 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    if (!widget.startServices) return super.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState s) {
-    if (s == AppLifecycleState.resumed) StatusApi.refreshSoon();
+    if (s == AppLifecycleState.resumed && widget.startServices) StatusApi.refreshSoon();
   }
 
   void _openPass(String id) {

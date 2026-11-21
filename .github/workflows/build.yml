@@ -52,6 +52,22 @@ jobs:
       - name: Unit tests
         run: flutter test
 
+      # Real renders of every screen (light/dark, RO/EN) for visual review.
+      - name: Screenshots
+        continue-on-error: true
+        run: |
+          sudo apt-get install -y -qq fonts-roboto >/dev/null 2>&1 || true
+          SCREEN_FONTS=/usr/share/fonts flutter test --update-goldens test/screens_test.dart
+          ls test/screens
+
+      - name: Publish screenshots
+        if: github.event_name != 'pull_request'
+        continue-on-error: true
+        run: |
+          gh release view screens -R "$REPO" >/dev/null 2>&1 || \
+            gh release create screens -R "$REPO" --prerelease --title "Capturi ecran" --notes "Generate automat de CI."
+          gh release upload screens test/screens/*.png -R "$REPO" --clobber
+
       - name: Build APK
         env:
           RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}

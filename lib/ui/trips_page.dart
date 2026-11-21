@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../models/pass.dart';
 import '../services/status_api.dart';
 import '../services/store.dart';
-import 'add_flow.dart';
 import 'boarding_code_page.dart';
 import 'pass_detail_page.dart';
 import 'widgets.dart';
@@ -104,13 +103,6 @@ class _EmptyTrips extends StatelessWidget {
         const SizedBox(height: 6),
         Text(tr('Scanează biletul sau deschide PDF-ul de la companie.', 'Scan your pass or open the airline PDF.'),
             textAlign: TextAlign.center, style: t.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
-        const SizedBox(height: 28),
-        FilledButton.icon(
-          onPressed: () => showAddSheet(context),
-          icon: const Icon(Icons.add),
-          label: Text(tr('Adaugă un bilet', 'Add a pass')),
-          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-        ),
       ]),
     );
   }

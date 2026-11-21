@@ -16,3 +16,4 @@ pubspec.lock
 .idea/
 .vscode/
 tool/rapidapi.key
+test/screens/
