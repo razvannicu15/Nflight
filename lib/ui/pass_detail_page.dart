@@ -53,21 +53,34 @@ class _PassDetailPageState extends State<PassDetailPage> {
               .showSnackBar(SnackBar(content: Text(tr('Detaliile zborului au fost copiate', 'Flight details copied'))));
         }
       case 'delete':
-        final ok = await showDialog<bool>(
+        final others = store.companions(p);
+        // 'one' | 'all' | null
+        final choice = await showDialog<String>(
           context: context,
           builder: (c) => AlertDialog(
             title: Text(tr('Ștergi biletul?', 'Delete this pass?')),
-            content: Text('${p.flightCode} · ${p.route} · ${p.passenger}'),
+            content: Text(others.isEmpty
+                ? '${p.flightCode} · ${p.route} · ${p.passenger}'
+                : tr('${p.flightCode} · ${p.route}\nPe aceeași rezervare mai sunt ${others.length} pasageri.',
+                    '${p.flightCode} · ${p.route}\n${others.length} more passengers on the same booking.')),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(c, false), child: Text(tr('Anulează', 'Cancel'))),
-              FilledButton(onPressed: () => Navigator.pop(c, true), child: Text(tr('Șterge', 'Delete'))),
+              TextButton(onPressed: () => Navigator.pop(c), child: Text(tr('Anulează', 'Cancel'))),
+              if (others.isNotEmpty)
+                TextButton(onPressed: () => Navigator.pop(c, 'one'), child: Text(tr('Doar ${p.passenger.split(' ').first}', 'Only ${p.passenger.split(' ').first}'))),
+              FilledButton(
+                  onPressed: () => Navigator.pop(c, others.isEmpty ? 'one' : 'all'),
+                  child: Text(others.isEmpty ? tr('Șterge', 'Delete') : tr('Toți (${others.length + 1})', 'All (${others.length + 1})'))),
             ],
           ),
         );
-        if (ok == true) {
-          await Notifier.cancel(p);
-          store.remove(p);
-          if (mounted) Navigator.pop(context);
+        if (choice == null) return;
+        final gone = choice == 'all' ? [p, ...others] : [p];
+        for (final x in gone) {
+          store.remove(x); // first: reminders must never block deleting
+        }
+        if (mounted) Navigator.pop(context);
+        for (final x in gone) {
+          Notifier.cancel(x);
         }
     }
   }

@@ -56,6 +56,21 @@ class StatusApi {
       apply(p, f);
       p.statusCheckedAt = DateTime.now();
       final after = (p.status, p.delayMinutes, p.gate, p.departure);
+      // Same flight, same booking: the family's passes get the same live info.
+      for (final c in store.companions(p)) {
+        c
+          ..status = p.status
+          ..delayMinutes = p.delayMinutes
+          ..arrivalDelayMinutes = p.arrivalDelayMinutes
+          ..gate = p.gate
+          ..terminal = p.terminal
+          ..departure = p.departure
+          ..arrival = p.arrival
+          ..aircraft = p.aircraft
+          ..callsign = p.callsign
+          ..icao24 = p.icao24
+          ..statusCheckedAt = p.statusCheckedAt;
+      }
       if (notify && before != after) {
         await Notifier.showNow(p, '${p.flightCode}: ${statusLabel(p.status)}', changeText(p));
       }

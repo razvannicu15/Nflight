@@ -41,28 +41,44 @@ class Notifier {
   }
 
   static Future<bool> requestPermission() async {
-    final android = _plugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-    return await android?.requestNotificationsPermission() ?? true;
+    try {
+      final android = _plugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      return await android?.requestNotificationsPermission() ?? true;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Stable notification ids per pass: base + 0..3.
   static int _base(FlightPass p) => (p.id.hashCode & 0x0FFFFFFF) * 4;
 
+  // Reminders are a convenience: a failure here must never block deleting, importing or
+  // refreshing a pass, so every call below swallows plugin errors.
   static Future<void> cancel(FlightPass p) async {
     for (var i = 0; i < 4; i++) {
-      await _plugin.cancel(_base(p) + i);
+      try {
+        await _plugin.cancel(_base(p) + i);
+      } catch (_) {}
     }
   }
 
   static Future<void> rescheduleAll() async {
-    await _plugin.cancelAll();
+    try {
+      await _plugin.cancelAll();
+    } catch (_) {}
     for (final p in store.upcoming) {
       await schedule(p);
     }
   }
 
   static Future<void> schedule(FlightPass p) async {
+    try {
+      await _schedule(p);
+    } catch (_) {}
+  }
+
+  static Future<void> _schedule(FlightPass p) async {
     await cancel(p);
     if (p.archived || p.status == FlightStatus.cancelled) return;
     final dep = Store.departureOf(p).add(Duration(minutes: p.delayMinutes));
@@ -105,8 +121,9 @@ class Notifier {
 
   /// Immediate notification, e.g. when live status reports a change.
   static Future<void> showNow(FlightPass p, String title, String body) async {
-    await _plugin.show(_base(p) + 3, title, body,
-        NotificationDetails(android: _channel), payload: p.id);
+    try {
+      await _plugin.show(_base(p) + 3, title, body, NotificationDetails(android: _channel), payload: p.id);
+    } catch (_) {}
   }
 
   static String hmOf(FlightPass p) {

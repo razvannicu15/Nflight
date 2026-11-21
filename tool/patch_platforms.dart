@@ -120,6 +120,17 @@ subprojects {
 ''';
   });
 
+  // R8 keep rules (notifications plugin) for release builds.
+  final rules = File('tool/android/proguard-rules.pro');
+  if (rules.existsSync() && Directory('android/app').existsSync()) {
+    rules.copySync('android/app/proguard-rules.pro');
+  }
+  patch('android/app/build.gradle.kts', (s) {
+    if (s.contains('proguard-rules.pro')) return s;
+    return s.replaceFirst(RegExp(r'release \{'),
+        'release {\n            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")');
+  });
+
   final kt = File('tool/android/MainActivity.kt');
   final ktDir = Directory('android/app/src/main/kotlin/ro/noraz/nflight');
   if (kt.existsSync() && ktDir.existsSync()) {
