@@ -92,6 +92,7 @@ class _SettingsPageState extends State<SettingsPage> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: SegmentedButton<String>(
+                  showSelectedIcon: false,
                   segments: [
                     ButtonSegment(value: 'system', label: Text(tr('Automat', 'Auto'))),
                     const ButtonSegment(value: 'ro', label: Text('Română')),
@@ -105,6 +106,7 @@ class _SettingsPageState extends State<SettingsPage> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: SegmentedButton<ThemeMode>(
+                  showSelectedIcon: false,
                   segments: [
                     ButtonSegment(value: ThemeMode.system, label: Text(tr('Automat', 'Auto')), icon: const Icon(Icons.brightness_auto_outlined)),
                     ButtonSegment(value: ThemeMode.light, label: Text(tr('Luminos', 'Light')), icon: const Icon(Icons.light_mode_outlined)),

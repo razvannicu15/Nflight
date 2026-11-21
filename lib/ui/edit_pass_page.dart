@@ -97,7 +97,6 @@ class _EditPassPageState extends State<EditPassPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(e == null ? tr('Zbor nou', 'New flight') : tr('Editează zborul', 'Edit flight')),
-        actions: [TextButton(onPressed: _save, child: Text(tr('Salvează', 'Save')))],
       ),
       body: MaxWidth(
         child: Form(
@@ -184,7 +183,7 @@ class _EditPassPageState extends State<EditPassPage> {
           final a = Airports.get(v.text.trim());
           return TextFormField(
             controller: c,
-            decoration: InputDecoration(labelText: label, hintText: 'OTP', helperText: a?.label ?? ' '),
+            decoration: InputDecoration(labelText: label, hintText: 'OTP', suffixText: a?.label),
             inputFormatters: [...f, LengthLimitingTextInputFormatter(3)],
             validator: _iata,
           );

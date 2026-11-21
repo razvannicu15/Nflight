@@ -136,8 +136,7 @@ class _StatsPageState extends State<StatsPage> {
             const SizedBox(height: 18),
             CellRow([
               ('km', km(total)),
-              (tr('Ore în aer', 'Hours flown'), '${(air.inMinutes / 60).round()}'),
-              (tr('Aeroporturi', 'Airports'), '${airports.length}'),
+              (tr('Ore', 'Hours'), '${(air.inMinutes / 60).round()}'),
               (tr('Țări', 'Countries'), '${countries.length}'),
             ], color: cs.onPrimaryContainer),
           ]),
