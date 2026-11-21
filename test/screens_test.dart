@@ -12,6 +12,8 @@ import 'package:nflight/core/i18n.dart';
 import 'package:nflight/main.dart';
 import 'package:nflight/models/pass.dart';
 import 'package:nflight/services/store.dart';
+import 'package:nflight/services/board_api.dart';
+import 'package:nflight/ui/board_page.dart';
 import 'package:nflight/ui/boarding_code_page.dart';
 import 'package:nflight/ui/edit_pass_page.dart';
 import 'package:nflight/ui/home_shell.dart';
@@ -69,6 +71,22 @@ void seed() {
     ]);
 }
 
+Board demoBoard() {
+  BoardFlight f(String no, String al, String to, String t, {String? rev, String gate = '', String st = 'expected'}) =>
+      BoardFlight(number: no, airline: al, otherIata: to, otherName: Airports.city(to), scheduled: t,
+          revised: rev, gate: gate, status: st);
+  return Board([
+    f('W6 3141', 'Wizz Air', 'LTN', '06:40', gate: 'A4', st: 'boarding'),
+    f('W6 3301', 'Wizz Air', 'BVA', '07:05', gate: 'A2', st: 'departed'),
+    f('RO 650', 'TAROM', 'OTP', '07:30', rev: '08:10', gate: 'B1', st: 'delayed'),
+    f('LH 1665', 'Lufthansa', 'MUC', '08:15', gate: 'B3'),
+    f('FR 1234', 'Ryanair', 'BGY', '09:00', st: 'canceled'),
+    f('W6 3021', 'Wizz Air', 'DTM', '10:20'),
+    f('OS 798', 'Austrian', 'VIE', '11:45'),
+    f('W6 3445', 'Wizz Air', 'MAD', '12:10'),
+  ], [], DateTime.now());
+}
+
 Widget app(Widget home, Brightness b) => MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: NflightApp.theme(b),
@@ -123,6 +141,7 @@ void main() {
       await shot(t, '10_code', BoardingCodePage(passes: [store.upcoming.first, ...store.companions(store.upcoming.first)]));
       await shot(t, '10_code_dark', BoardingCodePage(passes: [store.upcoming.first, ...store.companions(store.upcoming.first)]),
           b: Brightness.dark);
+      await shot(t, '13_board', BoardPage(iata: 'CLJ', highlight: store.upcoming.first, preview: demoBoard()));
       await shot(t, '11_edit', EditPassPage(existing: store.upcoming.first));
       store.passes.clear();
       await shot(t, '12_empty', const HomeShell(startServices: false));

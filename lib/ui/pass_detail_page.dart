@@ -7,6 +7,7 @@ import '../models/pass.dart';
 import '../services/notifier.dart';
 import '../services/status_api.dart';
 import '../services/store.dart';
+import 'board_page.dart';
 import 'boarding_code_page.dart';
 import 'compensation_sheet.dart';
 import 'edit_pass_page.dart';
@@ -216,6 +217,29 @@ class _PassDetailPageState extends State<PassDetailPage> {
             if (dist > 0)
               (tr('Distanță', 'Distance'), '${km(dist)} km · ${durationText(flightDuration(p))}', null),
           ]),
+          if (StatusApi.enabled)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Row(children: [
+                Expanded(
+                  child: FilledButton.tonalIcon(
+                    onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => BoardPage(iata: p.from, highlight: p))),
+                    icon: const Icon(Icons.flight_takeoff, size: 18),
+                    label: Text('${tr('Plecări', 'Departures')} ${p.from}'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton.tonalIcon(
+                    onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => BoardPage(iata: p.to, arrivals: true, highlight: p))),
+                    icon: const Icon(Icons.flight_land, size: 18),
+                    label: Text('${tr('Sosiri', 'Arrivals')} ${p.to}'),
+                  ),
+                ),
+              ]),
+            ),
           if (p.status == FlightStatus.cancelled || p.delayMinutes >= 120 || p.arrivalDelayMinutes >= 120 || !upcoming)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
