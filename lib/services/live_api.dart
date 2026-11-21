@@ -15,7 +15,17 @@ class LiveState {
     required this.track,
     required this.onGround,
     required this.seen,
+    this.icao24 = '',
+    this.path = const [],
   });
+  final String icao24;
+
+  /// Flown path so far as (lat, lon) pairs, when OpenSky has it.
+  final List<(double, double)> path;
+
+  LiveState withPath(List<(double, double)> p) => LiveState(
+      lat: lat, lon: lon, altitudeM: altitudeM, speedKmh: speedKmh, track: track,
+      onGround: onGround, seen: seen, icao24: icao24, path: p);
   final double lat;
   final double lon;
   final double altitudeM;
@@ -74,7 +84,28 @@ class LiveApi {
       track: (s[10] as num?)?.toDouble() ?? 0,
       onGround: s[8] == true,
       seen: contact == null ? DateTime.now() : DateTime.fromMillisecondsSinceEpoch(contact * 1000),
+      icao24: (s[0] ?? '').toString(),
     );
+  }
+
+  /// The plane's actual track so far (OpenSky experimental endpoint); empty if unavailable.
+  static Future<List<(double, double)>> path(String icao24) async {
+    if (icao24.isEmpty) return const [];
+    try {
+      final r = await http
+          .get(Uri.https(_base, '/api/tracks/all', {'icao24': icao24.toLowerCase(), 'time': '0'}))
+          .timeout(const Duration(seconds: 15));
+      if (r.statusCode != 200) return const [];
+      final j = jsonDecode(r.body);
+      final pts = j is Map ? j['path'] : null;
+      if (pts is! List) return const [];
+      return [
+        for (final p in pts)
+          if (p is List && p.length > 2 && p[1] is num && p[2] is num) ((p[1] as num).toDouble(), (p[2] as num).toDouble()),
+      ];
+    } catch (_) {
+      return const [];
+    }
   }
 
   /// Great-circle distance in km between a position and an airport.

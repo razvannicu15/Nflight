@@ -155,7 +155,8 @@ void main() {
           b: Brightness.dark);
       await shot(t, '13_board', BoardPage(preview: demoBoard()));
       await shot(t, '14_board_dark', BoardPage(preview: demoBoard()), b: Brightness.dark);
-      final live = LiveState(lat: 48.9, lon: 12.4, altitudeM: 11280, speedKmh: 842, track: 292, onGround: false, seen: DateTime.now());
+      final live = LiveState(lat: 48.9, lon: 12.4, altitudeM: 11280, speedKmh: 842, track: 292, onGround: false, seen: DateTime.now(),
+          path: const [(46.78, 23.69), (47.3, 21.5), (47.9, 18.6), (48.3, 16.2), (48.6, 14.0), (48.9, 12.4)]);
       const target = LiveTarget(from: 'CLJ', to: 'LTN', callsign: 'WZZ3141', title: 'W6 3141');
       await shot(t, '15_live', LivePage(target: target, tiles: false, preview: live));
       await shot(t, '11_edit', EditPassPage(existing: store.upcoming.first));

@@ -40,8 +40,12 @@ mixin _LivePolling<T extends StatefulWidget> on State<T> {
   }
 
   Future<void> _poll() async {
-    final s = await LiveApi.find(
+    var s = await LiveApi.find(
         icao24: target.icao24, callsign: target.callsign, from: target.from, to: target.to);
+    if (s != null) {
+      final p = await LiveApi.path(s.icao24);
+      if (p.length > 1) s = s.withPath(p);
+    }
     if (!mounted) return;
     setState(() {
       loading = false;
@@ -205,7 +209,13 @@ class LiveMap extends StatelessWidget {
     final pa = LatLng(a.lat, a.lon), pb = LatLng(b.lat, b.lon);
     final s = state;
     final plane = s == null ? null : LatLng(s.lat, s.lon);
-    final bounds = LatLngBounds.fromPoints([pa, pb, if (plane != null) plane]);
+    // Flown part (solid): the real track if known, else origin -> plane.
+    // Remaining part (dashed): plane -> destination. The plane always sits on the line.
+    final flown = plane == null
+        ? <LatLng>[]
+        : (s!.path.length > 1 ? [for (final p in s.path) LatLng(p.$1, p.$2), plane] : greatCircle(pa, plane, n: 32));
+    final remaining = plane == null ? greatCircle(pa, pb) : greatCircle(plane, pb, n: 32);
+    final bounds = LatLngBounds.fromPoints([pa, pb, if (plane != null) plane, ...flown]);
 
     Widget dot(String code) => Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -229,7 +239,13 @@ class LiveMap extends StatelessWidget {
             tileBuilder: dark ? darkModeTileBuilder : null,
           ),
         PolylineLayer(polylines: [
-          Polyline(points: greatCircle(pa, pb), strokeWidth: 3, color: cs.primary.withValues(alpha: 0.7)),
+          Polyline(
+            points: remaining,
+            strokeWidth: 2.5,
+            color: cs.primary.withValues(alpha: 0.55),
+            pattern: StrokePattern.dashed(segments: const [8, 7]),
+          ),
+          if (flown.length > 1) Polyline(points: flown, strokeWidth: 3.5, color: cs.primary),
         ]),
         MarkerLayer(markers: [
           Marker(point: pa, width: 44, height: 22, child: dot(target.from)),
@@ -247,7 +263,10 @@ class LiveMap extends StatelessWidget {
             ),
         ]),
         if (tiles)
-          const SimpleAttributionWidget(source: Text('OpenStreetMap')),
+          RichAttributionWidget(
+            showFlutterMapAttribution: false,
+            attributions: [TextSourceAttribution('OpenStreetMap contributors')],
+          ),
       ],
     );
   }
