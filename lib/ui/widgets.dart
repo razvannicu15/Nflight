@@ -1,11 +1,8 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 
 import '../core/airlines.dart';
 import '../core/airports.dart';
 import '../models/pass.dart';
-import '../services/logos.dart';
 import '../services/store.dart';
 import '../core/i18n.dart';
 
@@ -90,26 +87,7 @@ class AirlineBadge extends StatelessWidget {
   final double size;
 
   @override
-  Widget build(BuildContext context) => FutureBuilder<File?>(
-        future: Logos.get(code),
-        builder: (context, snap) {
-          final f = snap.data;
-          if (f == null) return _badge(context);
-          return Container(
-            width: size,
-            height: size,
-            padding: EdgeInsets.all(size * 0.1),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(size * 0.3),
-              border: Border.all(color: Colors.black.withValues(alpha: 0.08)),
-            ),
-            child: Image.file(f, fit: BoxFit.contain, errorBuilder: (_, __, ___) => _badge(context)),
-          );
-        },
-      );
-
-  Widget _badge(BuildContext context) {
+  Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final c = Airlines.color(code, cs);
     final fg = ThemeData.estimateBrightnessForColor(c) == Brightness.dark ? Colors.white : Colors.black87;

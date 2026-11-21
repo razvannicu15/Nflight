@@ -49,7 +49,15 @@ class BoardFlight {
   final bool cancelledFlag;
 
   bool get cancelled => cancelledFlag || status.startsWith('cancel');
-  bool get delayed => revised != null && revised != scheduled;
+  /// Late enough to matter (15 min+), like airport screens; small drifts are not flagged.
+  bool get delayed {
+    final r = revised;
+    if (r == null || r == scheduled) return false;
+    int m(String t) => int.parse(t.substring(0, 2)) * 60 + int.parse(t.substring(3, 5));
+    var d = m(r) - m(scheduled);
+    if (d < -720) d += 1440; // past midnight
+    return d >= 15;
+  }
 
   String get statusText => label ?? switch (status) {
         'canceled' || 'cancelled' || 'canceleduncertain' => tr('Anulat', 'Cancelled'),
