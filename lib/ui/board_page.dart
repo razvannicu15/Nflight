@@ -230,14 +230,9 @@ class _BoardPageState extends State<BoardPage> {
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
           child: Row(children: [
             SizedBox(width: 62, child: Text(tr('ORA', 'TIME'), style: header)),
-            const SizedBox(width: 38),
+            const SizedBox(width: 34),
             Expanded(child: Text(departures ? tr('SPRE', 'TO') : tr('DIN', 'FROM'), style: header)),
-            if (showPlace)
-              SizedBox(
-                  width: 56,
-                  child: Text(departures ? tr('POARTA', 'GATE') : (BoardApi.hasOwnSource(_iata) ? tr('BANDA', 'BELT') : 'TERM.'),
-                      style: header)),
-            if (showStatus) SizedBox(width: 92, child: Text('STATUS', textAlign: TextAlign.end, style: header)),
+            if (showStatus || showPlace) SizedBox(width: 96, child: Text('STATUS', textAlign: TextAlign.end, style: header)),
           ]),
         );
 
@@ -300,7 +295,7 @@ class _BoardPageState extends State<BoardPage> {
           ),
           Padding(
             padding: const EdgeInsets.only(right: 10, top: 2),
-            child: AirlineBadge(parts.isNotEmpty ? parts[0] : '', size: 28),
+            child: AirlineBadge(parts.isNotEmpty ? parts[0] : '', size: 24),
           ),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -312,19 +307,28 @@ class _BoardPageState extends State<BoardPage> {
                   maxLines: 1, overflow: TextOverflow.ellipsis, style: t.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
             ]),
           ),
-          if (showPlace)
+          if (showStatus || showPlace)
             SizedBox(
-              width: 56,
-              child: Text(place(f).isEmpty ? '—' : place(f),
-                  style: t.titleMedium?.copyWith(fontWeight: FontWeight.w700, fontFeatures: tab)),
-            ),
-          if (showStatus)
-            SizedBox(
-              width: 92,
-              child: Text(f.statusText,
-                  textAlign: TextAlign.end,
-                  maxLines: 2,
-                  style: t.bodySmall?.copyWith(color: statusColor, fontWeight: FontWeight.w600)),
+              width: 96,
+              child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                Text(f.statusText,
+                    textAlign: TextAlign.end,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.bodySmall?.copyWith(color: statusColor, fontWeight: FontWeight.w600)),
+                if (place(f).isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text.rich(
+                    TextSpan(children: [
+                      TextSpan(
+                          text: departures ? tr('Poarta ', 'Gate ') : (BoardApi.hasOwnSource(_iata) ? tr('Banda ', 'Belt ') : 'Term. '),
+                          style: t.labelSmall?.copyWith(color: cs.onSurfaceVariant)),
+                      TextSpan(text: place(f), style: t.titleSmall?.copyWith(fontWeight: FontWeight.w800, fontFeatures: tab)),
+                    ]),
+                    textAlign: TextAlign.end,
+                  ),
+                ],
+              ]),
             ),
         ]),
         ),
