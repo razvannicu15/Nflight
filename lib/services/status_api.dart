@@ -12,7 +12,11 @@ import '../core/i18n.dart';
 class StatusApi {
   static const host = 'aerodatabox.p.rapidapi.com';
 
-  static bool get enabled => store.apiKey.trim().isNotEmpty;
+  /// Family build key, injected by CI from the RAPIDAPI_KEY secret (never in the repo).
+  static const builtInKey = String.fromEnvironment('RAPIDAPI_KEY');
+
+  static String get key => store.apiKey.trim().isNotEmpty ? store.apiKey.trim() : builtInKey;
+  static bool get enabled => key.isNotEmpty;
 
   /// Updates [p] in place. Returns an error message, or null on success.
   static Future<String?> refresh(FlightPass p, {bool notify = false}) async {
@@ -22,7 +26,7 @@ class StatusApi {
         {'withAircraftImage': 'false', 'withLocation': 'false'});
     try {
       final r = await http.get(uri, headers: {
-        'X-RapidAPI-Key': store.apiKey.trim(),
+        'X-RapidAPI-Key': key,
         'X-RapidAPI-Host': host,
       }).timeout(const Duration(seconds: 20));
       if (r.statusCode == 204 || r.body.trim().isEmpty) return tr('Zborul nu a fost găsit încă.', 'Flight not found yet.');

@@ -135,7 +135,11 @@ class _SettingsPageState extends State<SettingsPage> {
                 leading: Icon(StatusApi.enabled ? Icons.cloud_done_outlined : Icons.cloud_off_outlined,
                     color: StatusApi.enabled ? cs.primary : null),
                 title: Text(tr('Cheie AeroDataBox', 'AeroDataBox key')),
-                subtitle: Text(StatusApi.enabled ? tr('Activ', 'On') : tr('Opțional', 'Optional')),
+                subtitle: Text(store.apiKey.trim().isNotEmpty
+                    ? tr('Cheie proprie', 'Own key')
+                    : StatusApi.builtInKey.isNotEmpty
+                        ? tr('Activ · cheie integrată', 'On · built-in key')
+                        : tr('Opțional', 'Optional')),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: _editKey,
               ),
