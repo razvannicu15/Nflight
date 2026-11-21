@@ -1,0 +1,39 @@
+name: nflight
+description: "Nflight – portofel de bilete de îmbarcare, fără reclame (Android)."
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  path_provider: ^2.1.4
+  http: ^1.2.2
+  archive: ^3.6.1
+  file_picker: ^8.1.2
+  mobile_scanner: ^7.0.0
+  pdfx: ^2.8.0
+  barcode_widget: ^2.0.4
+  flutter_local_notifications: ^18.0.1
+  timezone: ^0.10.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/airports.tsv.gz
+
+flutter_launcher_icons:
+  image_path: "assets/icon.png"
+  android: true
+  ios: false
+  min_sdk_android: 21
+  adaptive_icon_background: "#1F4FD1"
+  adaptive_icon_foreground: "assets/icon_foreground.png"

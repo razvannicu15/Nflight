@@ -1,0 +1,79 @@
+name: Build Nflight
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  REPO: ${{ github.repository }}
+
+jobs:
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate platform files
+        run: flutter create --platforms=android --org ro.noraz --project-name nflight .
+
+      - run: flutter pub get
+
+      - name: Patch manifest / gradle / native code
+        run: dart run tool/patch_platforms.dart
+
+      - name: App icons
+        run: dart run flutter_launcher_icons
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Unit tests
+        run: flutter test
+
+      - name: Build APK
+        run: |
+          flutter build apk --release
+          cp build/app/outputs/flutter-apk/app-release.apk Nflight-android.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Nflight-android
+          path: Nflight-android.apk
+
+      - name: Publish release
+        if: github.event_name != 'pull_request'
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            TAG="$GITHUB_REF_NAME"
+            gh release view "$TAG" -R "$REPO" >/dev/null 2>&1 || \
+              gh release create "$TAG" -R "$REPO" --title "Nflight $TAG" --generate-notes
+          else
+            TAG=latest
+            gh release view latest -R "$REPO" >/dev/null 2>&1 || \
+              gh release create latest -R "$REPO" --target "$GITHUB_SHA" --latest \
+                --title "Nflight - ultima versiune" --notes "Build automat."
+            gh release edit latest -R "$REPO" --notes "Build automat din main ($(date -u +'%Y-%m-%d %H:%M') UTC, commit ${GITHUB_SHA::7}). Instaleaza Nflight-android.apk pe telefon."
+          fi
+          gh release upload "$TAG" Nflight-android.apk -R "$REPO" --clobber
