@@ -18,6 +18,11 @@ class SettingsPage extends StatefulWidget {
   State<SettingsPage> createState() => _SettingsPageState();
 }
 
+/// Set by CI: --dart-define=BUILD=123 --dart-define=BUILT=2026-11-21 14:58
+const _build = String.fromEnvironment('BUILD');
+const _built = String.fromEnvironment('BUILT');
+String get _version => _build.isEmpty ? 'Nflight 0.1' : 'Nflight 0.1.$_build${_built.isEmpty ? '' : ' · $_built'}';
+
 class _SettingsPageState extends State<SettingsPage> {
   void _set(VoidCallback f, {bool reschedule = false}) {
     f();
@@ -164,7 +169,7 @@ class _SettingsPageState extends State<SettingsPage> {
               SectionTitle(tr('Despre', 'About')),
               ListTile(
                 leading: const Icon(Icons.info_outline),
-                title: const Text('Nflight 0.1'),
+                title: Text(_version),
                 subtitle: Text(tr('Fără reclame · norAz', 'No ads · norAz')),
               ),
             ]),

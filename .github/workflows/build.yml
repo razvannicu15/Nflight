@@ -72,7 +72,10 @@ jobs:
         env:
           RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
         run: |
-          flutter build apk --release --target-platform android-arm64 --build-number=$((100 + GITHUB_RUN_NUMBER)) --dart-define=RAPIDAPI_KEY="$RAPIDAPI_KEY"
+          BUILD=$((100 + GITHUB_RUN_NUMBER))
+          BUILT=$(TZ=Europe/Bucharest date +'%d.%m %H:%M')
+          flutter build apk --release --target-platform android-arm64 --build-number=$BUILD --build-name=0.1.$BUILD \
+            --dart-define=RAPIDAPI_KEY="$RAPIDAPI_KEY" --dart-define=BUILD=$BUILD --dart-define="BUILT=$BUILT"
           cp build/app/outputs/flutter-apk/app-release.apk Nflight-android.apk
 
       - uses: actions/upload-artifact@v4
@@ -92,6 +95,6 @@ jobs:
             gh release view latest -R "$REPO" >/dev/null 2>&1 || \
               gh release create latest -R "$REPO" --target "$GITHUB_SHA" --latest \
                 --title "Nflight - ultima versiune" --notes "Build automat."
-            gh release edit latest -R "$REPO" --notes "Build automat din main ($(date -u +'%Y-%m-%d %H:%M') UTC, commit ${GITHUB_SHA::7}). Instaleaza Nflight-android.apk pe telefon."
+            gh release edit latest -R "$REPO" --notes "Versiunea 0.1.$((100 + GITHUB_RUN_NUMBER)) din $(TZ=Europe/Bucharest date +'%d.%m.%Y %H:%M') (commit ${GITHUB_SHA::7}). Versiunea apare in Setari > Despre."
           fi
           gh release upload "$TAG" Nflight-android.apk -R "$REPO" --clobber

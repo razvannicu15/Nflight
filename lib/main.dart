@@ -57,6 +57,11 @@ class NflightApp extends StatelessWidget {
         theme: theme(Brightness.light),
         darkTheme: theme(Brightness.dark),
         home: const HomeShell(),
+        // Layout is designed for the default size; ignore Android's font scaling.
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
+          child: child!,
+        ),
       ),
     );
   }
