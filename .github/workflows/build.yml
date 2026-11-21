@@ -82,11 +82,6 @@ jobs:
             --dart-define=OPENSKY_CLIENT_ID="$OPENSKY_CLIENT_ID" --dart-define=OPENSKY_CLIENT_SECRET="$OPENSKY_CLIENT_SECRET" --dart-define=BUILD=$BUILD --dart-define="BUILT=$BUILT"
           cp build/app/outputs/flutter-apk/app-release.apk Nflight-android.apk
 
-      - uses: actions/upload-artifact@v5
-        with:
-          name: Nflight-android
-          path: Nflight-android.apk
-
       - name: Publish release
         if: github.event_name != 'pull_request'
         run: |
