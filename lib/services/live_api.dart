@@ -96,16 +96,17 @@ class LiveApi {
 
   /// Finds the plane by transponder hex (exact) or by callsign in the box
   /// spanning both airports. Returns null when it is not airborne/visible.
-  static Future<LiveState?> find({String icao24 = '', String callsign = '', required String from, required String to}) async {
+  static Future<LiveState?> find(
+      {String icao24 = '', String callsign = '', String prefix = '', required String from, required String to}) async {
     try {
       if (icao24.isNotEmpty) {
         final s = await _query({'icao24': icao24.toLowerCase()});
         if (s.isNotEmpty) return _state(s.first);
       }
-      if (callsign.isEmpty) return null;
-      final a = Airports.get(from), b = Airports.get(to);
+      if (callsign.isEmpty && prefix.isEmpty) return null;
+      final a = Airports.get(from) ?? Airports.get(to), b = Airports.get(to) ?? Airports.get(from);
       if (a == null || b == null) return null;
-      const pad = 3.0;
+      final pad = a == b ? 6.0 : 3.0;
       final states = await _query({
         'lamin': '${max(-90.0, min(a.lat, b.lat) - pad)}',
         'lamax': '${min(90.0, max(a.lat, b.lat) + pad)}',
@@ -114,10 +115,52 @@ class LiveApi {
       });
       final want = callsign.toUpperCase();
       for (final s in states) {
-        if ((s[1] ?? '').toString().trim().toUpperCase() == want) return _state(s);
+        if (want.isNotEmpty && (s[1] ?? '').toString().trim().toUpperCase() == want) return _state(s);
       }
+      // Airlines often fly under alphanumeric callsigns (WZZ6DB, RYR59BU): take the plane of that
+      // airline that is airborne, close to the route and heading to the destination.
+      if (prefix.isEmpty) return null;
+      LiveState? best;
+      var bestScore = 1e9;
+      for (final s in states) {
+        final cs = (s[1] ?? '').toString().trim().toUpperCase();
+        if (!cs.startsWith(prefix.toUpperCase())) continue;
+        final st = _state(s);
+        if (st == null || st.onGround) continue;
+        final off = a == b ? 0.0 : _offRoute(st.lat, st.lon, a, b);
+        final brg = _bearing(st.lat, st.lon, b.lat, b.lon);
+        final turn = ((st.track - brg + 540) % 360 - 180).abs();
+        if (off > 80 || turn > 60) continue;
+        final score = off + turn;
+        if (score < bestScore) {
+          bestScore = score;
+          best = st;
+        }
+      }
+      return best;
     } catch (_) {}
     return null;
+  }
+
+  static double _bearing(double la1, double lo1, double la2, double lo2) {
+    double rad(double d) => d * pi / 180;
+    final y = sin(rad(lo2 - lo1)) * cos(rad(la2));
+    final x = cos(rad(la1)) * sin(rad(la2)) - sin(rad(la1)) * cos(rad(la2)) * cos(rad(lo2 - lo1));
+    return (atan2(y, x) * 180 / pi + 360) % 360;
+  }
+
+  /// Approximate distance (km) from a point to the great circle between two airports.
+  static double _offRoute(double lat, double lon, Airport a, Airport b) {
+    const r = 6371.0;
+    double rad(double d) => d * pi / 180;
+    double dist(double la1, double lo1, double la2, double lo2) {
+      final dLat = rad(la2 - la1), dLon = rad(lo2 - lo1);
+      final h = sin(dLat / 2) * sin(dLat / 2) + cos(rad(la1)) * cos(rad(la2)) * sin(dLon / 2) * sin(dLon / 2);
+      return 2 * asin(min(1, sqrt(h)));
+    }
+    final d13 = dist(a.lat, a.lon, lat, lon);
+    final t13 = rad(_bearing(a.lat, a.lon, lat, lon)), t12 = rad(_bearing(a.lat, a.lon, b.lat, b.lon));
+    return (asin(sin(d13) * sin(t13 - t12)) * r).abs();
   }
 
   static Future<List<List>> _query(Map<String, String> q) async {

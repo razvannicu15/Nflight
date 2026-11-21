@@ -383,7 +383,8 @@ class BoardApi {
       final rev = _local(m['runwayTime']) ?? _local(m['revisedTime']) ?? _local(m['predictedTime']);
       final st = m['scheduledTime'];
       final day = st is Map ? (st['local'] ?? '').toString() : '';
-      final iata = (ap['iata'] ?? '').toString();
+      var iata = (ap['iata'] ?? '').toString();
+      if (iata.isEmpty) iata = Airports.byIcao((ap['icao'] ?? '').toString())?.iata ?? '';
       final ac = e['aircraft'] is Map ? e['aircraft'] as Map : const {};
       out.add(BoardFlight(
         callsign: (e['callSign'] ?? '').toString().replaceAll(' ', ''),

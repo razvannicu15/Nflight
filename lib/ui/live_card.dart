@@ -10,6 +10,7 @@ import '../core/airports.dart';
 import '../models/pass.dart';
 import '../core/i18n.dart';
 import '../services/live_api.dart';
+import '../services/status_api.dart';
 import 'widgets.dart';
 
 /// Which plane to follow, plus what we already know about the flight.
@@ -24,7 +25,13 @@ class LiveTarget {
     this.aircraft = '',
     this.schedDep,
     this.schedArr,
+    this.date = '',
   });
+  final String date; // "yyyy-MM-dd", to identify the flight
+
+  LiveTarget copyWith({String? from, String? to, String? callsign, String? icao24}) => LiveTarget(
+      from: from ?? this.from, to: to ?? this.to, callsign: callsign ?? this.callsign, icao24: icao24 ?? this.icao24,
+      title: title, carrier: carrier, aircraft: aircraft, schedDep: schedDep, schedArr: schedArr, date: date);
   final String from;
   final String to;
   final String callsign;
@@ -65,15 +72,36 @@ mixin _LivePolling<T extends StatefulWidget> on State<T> {
   DateTime? _start;
   bool _pathTried = false;
 
+  /// The target with gaps filled in (real callsign, transponder, missing airport).
+  LiveTarget? _eff;
+  LiveTarget get eff => _eff ?? target;
+  bool _idsTried = false;
+
   Future<void> _poll() async {
+    // Flights from the airport board come without callsign/transponder: ask the status API once.
+    if (!_idsTried && target.icao24.isEmpty && target.title.isNotEmpty && StatusApi.enabled) {
+      _idsTried = true;
+      final ids = await StatusApi.ids(target.title, target.date);
+      if (ids != null) {
+        _eff = eff.copyWith(
+          from: eff.from.isNotEmpty ? null : ids['from'],
+          to: eff.to.isNotEmpty ? null : ids['to'],
+          callsign: (ids['cs'] ?? '').isNotEmpty ? ids['cs'] : null,
+          icao24: (ids['hex'] ?? '').isNotEmpty ? ids['hex'] : null,
+        );
+      }
+    }
+    final t = eff;
+    final prefix = icaoAirline[t.carrier.toUpperCase()] ?? '';
     var s = await LiveApi.find(
-        icao24: _icao.isNotEmpty ? _icao : target.icao24,
-        callsign: _icao.isNotEmpty ? '' : target.callsign,
-        from: target.from,
-        to: target.to);
+        icao24: _icao.isNotEmpty ? _icao : t.icao24,
+        callsign: _icao.isNotEmpty ? '' : t.callsign,
+        prefix: _icao.isNotEmpty ? '' : prefix,
+        from: t.from,
+        to: t.to);
     if (s == null && _icao.isNotEmpty) {
-      // Lost by transponder (e.g. landed): try once more by callsign.
-      s = await LiveApi.find(callsign: target.callsign, from: target.from, to: target.to);
+      // Lost by transponder: try once more by callsign / route.
+      s = await LiveApi.find(callsign: t.callsign, prefix: prefix, from: t.from, to: t.to);
     }
     if (s != null) {
       _icao = s.icao24;
@@ -84,6 +112,11 @@ mixin _LivePolling<T extends StatefulWidget> on State<T> {
         _start = start;
       }
       if (_path.isNotEmpty) _path = [..._path, (s.lat, s.lon)];
+      // Origin still unknown: the airport where the track starts.
+      if (eff.from.isEmpty && _path.isNotEmpty) {
+        final o = Airports.nearest(_path.first.$1, _path.first.$2);
+        if (o != null) _eff = eff.copyWith(from: o.iata);
+      }
       s = s.withPath(_path, _start);
       aircraft ??= await LiveApi.aircraft(s.icao24);
     }
@@ -138,16 +171,16 @@ class _LiveFlightCardState extends State<LiveFlightCard> with _LivePolling<LiveF
         child: Column(children: [
           SizedBox(
             height: 190,
-            child: IgnorePointer(child: LiveMap(target: widget.target, state: state, tiles: widget.tiles)),
+            child: IgnorePointer(child: LiveMap(target: eff, state: state, tiles: widget.tiles)),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
             child: state == null
                 ? _Searching(loading: loading)
                 : Column(children: [
-                    RouteProgress(target: widget.target, state: state!),
+                    RouteProgress(target: eff, state: state!),
                     const SizedBox(height: 14),
-                    LiveNumbers(target: widget.target, state: state!),
+                    LiveNumbers(target: eff, state: state!),
                   ]),
           ),
         ]),
@@ -183,7 +216,7 @@ class _LivePageState extends State<LivePage> with _LivePolling<LivePage> {
 
   @override
   Widget build(BuildContext context) {
-    final t = widget.target;
+    final t = eff;
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(titleSpacing: 0, title: _title(context, t)),
@@ -291,7 +324,7 @@ class RouteProgress extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final total = Airports.distanceKm(target.from, target.to);
+    final total = target.from.isEmpty ? 0.0 : Airports.distanceKm(target.from, target.to);
     final left = LiveApi.kmTo(state, target.to);
     final frac = total <= 0 ? 0.0 : (1 - left / total).clamp(0.0, 1.0);
     final mins = minutesToGo(target, state);
@@ -301,7 +334,7 @@ class RouteProgress extends StatelessWidget {
     final sub = tt.bodySmall?.copyWith(color: cs.onSurfaceVariant);
 
     Widget end(String iata, String? sched, CrossAxisAlignment a) => Column(crossAxisAlignment: a, children: [
-          Text(iata, style: code),
+          Text(iata.isEmpty ? '—' : iata, style: code),
           Text(Airports.city(iata), maxLines: 1, overflow: TextOverflow.ellipsis, style: sub),
           if (sched != null) Text(sched, style: tt.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
         ]);
@@ -401,10 +434,14 @@ class LiveMap extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final dark = Theme.of(context).brightness == Brightness.dark;
     final a = Airports.get(target.from), b = Airports.get(target.to);
-    if (a == null || b == null) return const SizedBox.shrink();
-    final pa = LatLng(a.lat, a.lon), pb = LatLng(b.lat, b.lon);
     final s = state;
     final plane = s == null ? null : LatLng(s.lat, s.lon);
+    if (a == null && b == null && plane == null) {
+      return Container(color: dark ? const Color(0xFF1B1E24) : const Color(0xFFE8EDF2));
+    }
+    // A missing airport is replaced by the plane (or the other airport) so the map still draws.
+    final pa = a != null ? LatLng(a.lat, a.lon) : (s?.path.isNotEmpty == true ? LatLng(s!.path.first.$1, s.path.first.$2) : (plane ?? LatLng(b!.lat, b.lon)));
+    final pb = b != null ? LatLng(b.lat, b.lon) : (plane ?? pa);
     // Flown part (solid): the real track if known, else origin -> plane.
     // Remaining part (dashed): plane -> destination. The plane always sits on the line.
     final flown = plane == null
@@ -446,8 +483,8 @@ class LiveMap extends StatelessWidget {
           if (flown.length > 1) Polyline(points: flown, strokeWidth: 3.5, color: cs.primary),
         ]),
         MarkerLayer(markers: [
-          Marker(point: pa, width: 44, height: 22, child: dot(target.from)),
-          Marker(point: pb, width: 44, height: 22, child: dot(target.to)),
+          if (a != null) Marker(point: pa, width: 44, height: 22, child: dot(target.from)),
+          if (b != null) Marker(point: pb, width: 44, height: 22, child: dot(target.to)),
           if (plane != null)
             Marker(
               point: plane,

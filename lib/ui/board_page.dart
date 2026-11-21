@@ -277,6 +277,7 @@ class _BoardPageState extends State<BoardPage> {
         aircraft: f.aircraft,
         schedDep: departures ? f.scheduled : null,
         schedArr: departures ? null : f.scheduled,
+        date: f.day,
       );
       return InkWell(
         onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => LivePage(target: target))),

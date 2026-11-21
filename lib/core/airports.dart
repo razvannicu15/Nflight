@@ -38,6 +38,35 @@ class Airports {
 
   static Airport? get(String iata) => _map[iata.toUpperCase()];
 
+  static Map<String, Airport>? _byIcao;
+  static Airport? byIcao(String icao) {
+    _byIcao ??= {for (final a in _map.values) if (a.icao.isNotEmpty) a.icao.toUpperCase(): a};
+    return _byIcao![icao.toUpperCase()];
+  }
+
+  /// Closest airport to a point, within [maxKm].
+  static Airport? nearest(double lat, double lon, {double maxKm = 30}) {
+    Airport? best;
+    var bestD = maxKm;
+    for (final a in _map.values) {
+      if ((a.lat - lat).abs() > 1 || (a.lon - lon).abs() > 1.5) continue;
+      final d = _km(lat, lon, a.lat, a.lon);
+      if (d < bestD) {
+        bestD = d;
+        best = a;
+      }
+    }
+    return best;
+  }
+
+  static double _km(double la1, double lo1, double la2, double lo2) {
+    const r = 6371.0;
+    double rad(double d) => d * pi / 180;
+    final dLat = rad(la2 - la1), dLon = rad(lo2 - lo1);
+    final h = sin(dLat / 2) * sin(dLat / 2) + cos(rad(la1)) * cos(rad(la2)) * sin(dLon / 2) * sin(dLon / 2);
+    return 2 * r * asin(min(1, sqrt(h)));
+  }
+
   static String city(String iata) => get(iata)?.label ?? iata;
 
   static Iterable<Airport> search(String q) {

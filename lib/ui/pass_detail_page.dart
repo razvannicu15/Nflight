@@ -201,6 +201,7 @@ class _PassDetailPageState extends State<PassDetailPage> {
                 aircraft: p.aircraft,
                 schedDep: p.departure,
                 schedArr: p.arrival,
+                date: p.date,
               ),
             ),
           ],

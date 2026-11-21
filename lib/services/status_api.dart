@@ -6,6 +6,7 @@ import '../models/pass.dart';
 import 'notifier.dart';
 import 'quota.dart';
 import 'store.dart';
+import '../core/airports.dart';
 import '../core/i18n.dart';
 
 /// Live flight status through AeroDataBox (RapidAPI). The user brings their
@@ -70,6 +71,47 @@ class StatusApi {
     if (!Store.isPast(p)) return;
     p.statusCheckedAt = DateTime.now();
     store.save();
+  }
+
+  /// Callsign, transponder hex and airports of a flight (for the live map). One request.
+  static Future<Map<String, String>?> ids(String number, String date) async {
+    if (!enabled || number.isEmpty || date.isEmpty) return null;
+    try {
+      final r = await http.get(Uri.https(host, '/flights/number/${number.replaceAll(' ', '')}/$date',
+          {'withAircraftImage': 'false', 'withLocation': 'false'}), headers: {
+        'X-RapidAPI-Key': key,
+        'X-RapidAPI-Host': host,
+      }).timeout(const Duration(seconds: 20));
+      Quota.fromHeaders(Quota.aerodatabox, r.headers, status: r.statusCode);
+      if (r.statusCode != 200) return null;
+      final list = jsonDecode(r.body);
+      if (list is! List || list.isEmpty) return null;
+      // Prefer the leg that is in the air now.
+      Map f = list.first as Map;
+      for (final e in list) {
+        final s = (e is Map ? e['status'] : '').toString().toLowerCase();
+        if (s == 'enroute' || s == 'departed' || s == 'approaching') {
+          f = e as Map;
+          break;
+        }
+      }
+      final ac = f['aircraft'] is Map ? f['aircraft'] as Map : const {};
+      String side(String k) {
+        final m = f[k];
+        if (m is! Map || m['airport'] is! Map) return '';
+        final a = m['airport'] as Map;
+        final i = (a['iata'] ?? '').toString();
+        return i.isNotEmpty ? i : (Airports.byIcao((a['icao'] ?? '').toString())?.iata ?? '');
+      }
+      return {
+        'cs': (f['callSign'] ?? '').toString().replaceAll(' ', ''),
+        'hex': (ac['modeS'] ?? '').toString().toLowerCase(),
+        'from': side('departure'),
+        'to': side('arrival'),
+      };
+    } catch (_) {
+      return null;
+    }
   }
 
   static String? _iata(dynamic side) {
