@@ -124,7 +124,83 @@ class BoardApi {
     return Board(mix(api.departures, own.departures, true), mix(api.arrivals, own.arrivals, false), DateTime.now());
   }
 
+  /// Backup API key (aviationstack, 100 calls/month): only when AeroDataBox fails.
+  static const avKey = String.fromEnvironment('AVIATIONSTACK_KEY');
+
   static Future<(Board?, String?)> _loadApi(String iata) async {
+    final (b, err) = await _loadAeroDataBox(iata);
+    if (b != null || avKey.isEmpty) return (b, err);
+    final (b2, err2) = await _loadAviationstack(iata);
+    return (b2, b2 == null ? err : err2);
+  }
+
+  // ---- aviationstack (backup) -----------------------------------------------------------------
+
+  static Future<(Board?, String?)> _loadAviationstack(String iata) async {
+    final now = Airports.nowAt(iata);
+    final from = now.subtract(const Duration(hours: 1)), to = now.add(const Duration(hours: 12));
+    final lo = '${ymd(from)} ${hm(from)}', hi = '${ymd(to)} ${hm(to)}';
+    final lists = <List<BoardFlight>>[];
+    try {
+      for (final side in ['dep_iata', 'arr_iata']) {
+        final uri = Uri.https('api.aviationstack.com', '/v1/flights', {'access_key': avKey, side: iata, 'limit': '100'});
+        final r = await http.get(uri).timeout(const Duration(seconds: 25));
+        if (r.statusCode != 200) return (null, tr('Eroare server (${r.statusCode}).', 'Server error (${r.statusCode}).'));
+        final j = jsonDecode(utf8.decode(r.bodyBytes));
+        if (j is! Map || j['data'] is! List) return (null, tr('Limita lunară a fost atinsă.', 'Monthly limit reached.'));
+        final dep = side == 'dep_iata';
+        final out = <BoardFlight>[];
+        for (final e in j['data'] as List) {
+          if (e is! Map) continue;
+          final here = (dep ? e['departure'] : e['arrival']);
+          final there = (dep ? e['arrival'] : e['departure']);
+          if (here is! Map || there is! Map) continue;
+          // aviationstack gives airport-local times (despite the +00:00 suffix).
+          final s = (here['scheduled'] ?? '').toString();
+          if (s.length < 16) continue;
+          final day = s.substring(0, 10), sched = s.substring(11, 16);
+          final key = '$day $sched';
+          if (key.compareTo(lo) < 0 || key.compareTo(hi) > 0) continue;
+          final est = (here['estimated'] ?? '').toString();
+          final rev = est.length >= 16 ? est.substring(11, 16) : null;
+          final fl = e['flight'] is Map ? e['flight'] as Map : const {};
+          final al = e['airline'] is Map ? e['airline'] as Map : const {};
+          final code = (al['iata'] ?? '').toString();
+          final other = (there['iata'] ?? '').toString();
+          final st = (e['flight_status'] ?? '').toString().toLowerCase();
+          out.add(BoardFlight(
+            number: '$code ${fl['number'] ?? ''}'.trim(),
+            airline: (al['name'] ?? '').toString(),
+            otherIata: other,
+            otherName: Airports.get(other)?.label ?? (there['airport'] ?? other).toString(),
+            scheduled: sched,
+            day: day,
+            revised: rev != null && rev != sched ? rev : null,
+            terminal: dep ? (here['terminal'] ?? '').toString() : (here['baggage'] ?? '').toString(),
+            gate: dep ? (here['gate'] ?? '').toString() : '',
+            status: switch (st) {
+              'cancelled' => 'cancelled',
+              'active' => dep ? 'departed' : 'approaching',
+              'landed' => dep ? 'departed' : 'arrived',
+              'diverted' => 'diverted',
+              _ => '',
+            },
+          ));
+        }
+        // Codeshares repeat the same physical flight: keep one row per time + destination.
+        final seen = <String>{};
+        out.sort((a, b) => '${a.day} ${a.scheduled}'.compareTo('${b.day} ${b.scheduled}'));
+        lists.add(out.where((f) => seen.add('${f.day}${f.scheduled}${f.otherIata}')).toList());
+      }
+    } catch (_) {
+      return (null, tr('Fără conexiune.', 'No connection.'));
+    }
+    return (Board(lists[0], lists[1], DateTime.now()), null);
+  }
+
+  // ---- AeroDataBox (main) ---------------------------------------------------------------------
+
+  static Future<(Board?, String?)> _loadAeroDataBox(String iata) async {
     if (!StatusApi.enabled) return (null, tr('Status live inactiv.', 'Live status is off.'));
     final now = Airports.nowAt(iata);
     String f(DateTime d) => '${ymd(d)}T${hm(d)}';

@@ -134,7 +134,7 @@ class _BoardPageState extends State<BoardPage> {
                   ),
                 ),
               ],
-              body: !StatusApi.enabled && !BoardApi.hasOwnSource(_iata) && widget.preview == null
+              body: !StatusApi.enabled && BoardApi.avKey.isEmpty && !BoardApi.hasOwnSource(_iata) && widget.preview == null
                   ? _message(tr('Status live inactiv', 'Live status is off'), retry: false)
                   : _loading
                       ? const Center(child: CircularProgressIndicator())
