@@ -20,7 +20,7 @@ class LiveTarget {
   final String title;
 }
 
-/// Keeps a plane's position fresh while on screen (OpenSky, every 30 s).
+/// Keeps a plane's position fresh while on screen (OpenSky, every 2 min).
 mixin _LivePolling<T extends StatefulWidget> on State<T> {
   LiveTarget get target;
   LiveState? get preview => null;
@@ -36,7 +36,7 @@ mixin _LivePolling<T extends StatefulWidget> on State<T> {
       return;
     }
     _poll();
-    _timer = Timer.periodic(const Duration(seconds: 30), (_) => _poll());
+    _timer = Timer.periodic(const Duration(minutes: 2), (_) => _poll());
   }
 
   Future<void> _poll() async {
