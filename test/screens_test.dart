@@ -63,7 +63,6 @@ void seed() {
     ..[Quota.opensky] = QuotaInfo(remaining: 38, limit: 400, resetAt: DateTime(now.year, now.month, now.day + 1, 2), updated: now);
   store.boardAirports = ['CLJ', 'OTP', 'LTN'];
   store.boardAirport = 'CLJ';
-  final now = DateTime.now();
   final d = DateTime(now.year, now.month, now.day);
   store.passes
     ..clear()
