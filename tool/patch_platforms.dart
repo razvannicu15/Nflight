@@ -110,9 +110,9 @@ void main() {
 // nflight-compileSdk: raise old plugins to the API level Flutter requires.
 subprojects {
     plugins.withId("com.android.library") {
-        afterEvaluate {
-            extensions.configure<com.android.build.gradle.LibraryExtension>("android") {
-                if ((compileSdk ?: 0) < 36) compileSdk = 36
+        extensions.configure<com.android.build.api.variant.LibraryAndroidComponentsExtension> {
+            finalizeDsl { ext ->
+                if ((ext.compileSdk ?: 0) < 36) ext.compileSdk = 36
             }
         }
     }
