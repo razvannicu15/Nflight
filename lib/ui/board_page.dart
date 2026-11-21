@@ -272,6 +272,10 @@ class _BoardPageState extends State<BoardPage> {
             : (parts.length == 2 ? guessCallsign(parts[0], parts[1]) ?? '' : ''),
         icao24: f.icao24,
         title: f.number,
+        carrier: parts.isNotEmpty ? parts[0] : '',
+        aircraft: f.aircraft,
+        schedDep: departures ? f.scheduled : null,
+        schedArr: departures ? null : f.scheduled,
       );
       return InkWell(
         onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => LivePage(target: target))),

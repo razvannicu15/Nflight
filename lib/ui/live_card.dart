@@ -5,33 +5,52 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../core/airlines.dart';
 import '../core/airports.dart';
+import '../models/pass.dart';
 import '../core/i18n.dart';
 import '../services/live_api.dart';
 import 'widgets.dart';
 
-/// Which plane to follow.
+/// Which plane to follow, plus what we already know about the flight.
 class LiveTarget {
-  const LiveTarget({required this.from, required this.to, this.callsign = '', this.icao24 = '', this.title = ''});
+  const LiveTarget({
+    required this.from,
+    required this.to,
+    this.callsign = '',
+    this.icao24 = '',
+    this.title = '',
+    this.carrier = '',
+    this.aircraft = '',
+    this.schedDep,
+    this.schedArr,
+  });
   final String from;
   final String to;
   final String callsign;
   final String icao24;
-  final String title;
+  final String title; // flight number, e.g. "W6 3141"
+  final String carrier; // IATA airline code
+  final String aircraft;
+  final String? schedDep; // "HH:mm" local
+  final String? schedArr;
 }
 
 /// Keeps a plane's position fresh while on screen (OpenSky, every 2 min).
 mixin _LivePolling<T extends StatefulWidget> on State<T> {
   LiveTarget get target;
   LiveState? get preview => null;
+  AircraftInfo? get previewAircraft => null;
 
   LiveState? state;
+  AircraftInfo? aircraft;
   bool loading = true;
   Timer? _timer;
 
   void startPolling() {
     if (preview != null) {
       state = preview;
+      aircraft = previewAircraft;
       loading = false;
       return;
     }
@@ -43,8 +62,9 @@ mixin _LivePolling<T extends StatefulWidget> on State<T> {
     var s = await LiveApi.find(
         icao24: target.icao24, callsign: target.callsign, from: target.from, to: target.to);
     if (s != null) {
-      final p = await LiveApi.path(s.icao24);
-      if (p.length > 1) s = s.withPath(p);
+      final (p, start) = await LiveApi.path(s.icao24);
+      if (p.length > 1 || start != null) s = s.withPath(p.length > 1 ? p : s.path, start);
+      aircraft ??= await LiveApi.aircraft(s.icao24);
     }
     if (!mounted) return;
     setState(() {
@@ -60,7 +80,7 @@ mixin _LivePolling<T extends StatefulWidget> on State<T> {
   }
 }
 
-/// Map with the route and the plane, plus altitude / speed / distance left.
+/// Compact card for the flight details page: map, progress and key numbers.
 class LiveFlightCard extends StatefulWidget {
   const LiveFlightCard({super.key, required this.target, this.preview, this.tiles = true});
   final LiveTarget target;
@@ -96,21 +116,31 @@ class _LiveFlightCardState extends State<LiveFlightCard> with _LivePolling<LiveF
             builder: (_) => LivePage(target: widget.target, preview: widget.preview, tiles: widget.tiles))),
         child: Column(children: [
           SizedBox(
-            height: 200,
+            height: 190,
             child: IgnorePointer(child: LiveMap(target: widget.target, state: state, tiles: widget.tiles)),
           ),
-          Padding(padding: const EdgeInsets.fromLTRB(18, 14, 18, 16), child: LiveStats(target: widget.target, state: state, loading: loading)),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
+            child: state == null
+                ? _Searching(loading: loading)
+                : Column(children: [
+                    RouteProgress(target: widget.target, state: state!),
+                    const SizedBox(height: 14),
+                    LiveNumbers(target: widget.target, state: state!),
+                  ]),
+          ),
         ]),
       ),
     );
   }
 }
 
-/// Full screen, interactive map (also used from the airport board).
+/// Full screen map with a details panel, like the big flight trackers (also opened from the airport board).
 class LivePage extends StatefulWidget {
-  const LivePage({super.key, required this.target, this.preview, this.tiles = true});
+  const LivePage({super.key, required this.target, this.preview, this.previewAircraft, this.tiles = true});
   final LiveTarget target;
   final LiveState? preview;
+  final AircraftInfo? previewAircraft;
   final bool tiles;
   @override
   State<LivePage> createState() => _LivePageState();
@@ -121,6 +151,8 @@ class _LivePageState extends State<LivePage> with _LivePolling<LivePage> {
   LiveTarget get target => widget.target;
   @override
   LiveState? get preview => widget.preview;
+  @override
+  AircraftInfo? get previewAircraft => widget.previewAircraft;
 
   @override
   void initState() {
@@ -131,44 +163,185 @@ class _LivePageState extends State<LivePage> with _LivePolling<LivePage> {
   @override
   Widget build(BuildContext context) {
     final t = widget.target;
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(title: Text(t.title.isEmpty ? '${t.from} – ${t.to}' : t.title)),
       body: Column(children: [
         Expanded(child: LiveMap(target: t, state: state, tiles: widget.tiles, interactive: true)),
-        SafeArea(
-          top: false,
-          child: Padding(padding: const EdgeInsets.fromLTRB(20, 16, 20, 16), child: LiveStats(target: t, state: state, loading: loading)),
+        Container(
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerLow,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+              child: state == null ? _Searching(loading: loading) : _panel(context, t, state!),
+            ),
+          ),
         ),
       ]),
     );
   }
+
+  Widget _panel(BuildContext context, LiveTarget t, LiveState s) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final carrier = t.carrier.isNotEmpty ? t.carrier : (t.title.split(' ').first);
+    final model = aircraft?.model.isNotEmpty == true ? aircraft!.model : t.aircraft;
+    final reg = aircraft?.registration ?? '';
+    Widget chip(String text) => Container(
+          margin: const EdgeInsets.only(right: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(color: cs.surfaceContainerHighest, borderRadius: BorderRadius.circular(8)),
+          child: Text(text, style: tt.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
+        );
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+      Row(children: [
+        AirlineBadge(carrier, size: 40),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(Airlines.name(carrier), style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 4),
+            Row(children: [
+              if (s.callsign.isNotEmpty) chip(s.callsign),
+              if (aircraft?.typecode.isNotEmpty == true) chip(aircraft!.typecode),
+            ]),
+          ]),
+        ),
+      ]),
+      const SizedBox(height: 18),
+      RouteProgress(target: t, state: s, large: true),
+      const SizedBox(height: 18),
+      LiveNumbers(target: t, state: s, withVertical: true),
+      if (model.isNotEmpty || reg.isNotEmpty) ...[
+        Divider(height: 28, color: cs.outlineVariant.withValues(alpha: 0.6)),
+        Row(children: [
+          Expanded(
+            child: Text(model.isEmpty ? '—' : model,
+                maxLines: 1, overflow: TextOverflow.ellipsis, style: tt.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
+          ),
+          if (reg.isNotEmpty) ...[
+            Text(tr('ÎNMATR. ', 'REG '), style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant, letterSpacing: 0.8)),
+            Text(reg, style: tt.bodyLarge?.copyWith(fontWeight: FontWeight.w700)),
+          ],
+        ]),
+      ],
+    ]);
+  }
 }
 
-class LiveStats extends StatelessWidget {
-  const LiveStats({super.key, required this.target, required this.state, required this.loading});
-  final LiveTarget target;
-  final LiveState? state;
+class _Searching extends StatelessWidget {
+  const _Searching({required this.loading});
   final bool loading;
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Row(children: [
+      if (loading)
+        const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+      else
+        Icon(Icons.flight, size: 18, color: cs.onSurfaceVariant),
+      const SizedBox(width: 10),
+      Text(loading ? tr('Caut avionul…', 'Looking for the plane…') : tr('Avionul nu e în aer acum', 'The plane is not airborne now'),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
+    ]);
+  }
+}
+
+/// Minutes to landing from distance left and ground speed (+ a few for the approach).
+int? minutesToGo(LiveTarget t, LiveState s) {
+  if (s.onGround || s.speedKmh < 150) return null;
+  return (LiveApi.kmTo(s, t.to) / s.speedKmh * 60 + 8).round();
+}
+
+/// CLJ ———✈——— LTN with cities, departed / landing times.
+class RouteProgress extends StatelessWidget {
+  const RouteProgress({super.key, required this.target, required this.state, this.large = false});
+  final LiveTarget target;
+  final LiveState state;
+  final bool large;
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
     final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final total = Airports.distanceKm(target.from, target.to);
+    final left = LiveApi.kmTo(state, target.to);
+    final frac = total <= 0 ? 0.0 : (1 - left / total).clamp(0.0, 1.0);
+    final mins = minutesToGo(target, state);
+    final eta = mins == null ? null : hm(Airports.nowAt(target.to).add(Duration(minutes: mins)));
+    final since = state.departedAt == null ? null : DateTime.now().difference(state.departedAt!);
+    final code = (large ? tt.headlineMedium : tt.titleLarge)?.copyWith(fontWeight: FontWeight.w800);
+    final sub = tt.bodySmall?.copyWith(color: cs.onSurfaceVariant);
+
+    Widget end(String iata, String? sched, CrossAxisAlignment a) => Column(crossAxisAlignment: a, children: [
+          Text(iata, style: code),
+          Text(Airports.city(iata), maxLines: 1, overflow: TextOverflow.ellipsis, style: sub),
+          if (sched != null) Text(sched, style: tt.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
+        ]);
+
+    return Column(children: [
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        SizedBox(width: 92, child: end(target.from, target.schedDep, CrossAxisAlignment.start)),
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(top: large ? 14 : 10),
+            child: LayoutBuilder(builder: (_, c) {
+              const icon = 22.0;
+              final x = (c.maxWidth - icon) * frac;
+              return SizedBox(
+                height: icon,
+                child: Stack(clipBehavior: Clip.none, children: [
+                  Positioned(left: 0, right: 0, top: icon / 2 - 1.5,
+                      child: Container(height: 3, decoration: BoxDecoration(color: cs.outlineVariant, borderRadius: BorderRadius.circular(2)))),
+                  Positioned(left: 0, top: icon / 2 - 1.5,
+                      child: Container(width: x + icon / 2, height: 3, decoration: BoxDecoration(color: cs.primary, borderRadius: BorderRadius.circular(2)))),
+                  Positioned(left: x, top: 0, child: Transform.rotate(angle: pi / 2, child: Icon(Icons.flight, size: icon, color: cs.primary))),
+                ]),
+              );
+            }),
+          ),
+        ),
+        SizedBox(width: 92, child: end(target.to, target.schedArr, CrossAxisAlignment.end)),
+      ]),
+      const SizedBox(height: 10),
+      Row(children: [
+        Expanded(
+          child: Text(
+            since == null ? '' : tr('Decolat acum ${durationText(since)}', 'Departed ${durationText(since)} ago'),
+            style: sub,
+          ),
+        ),
+        if (eta != null)
+          Text.rich(TextSpan(children: [
+            TextSpan(text: tr('Aterizează ~', 'Lands ~'), style: sub),
+            TextSpan(text: eta, style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w800, color: cs.primary)),
+            TextSpan(text: tr(' · în ${durationText(Duration(minutes: mins!))}', ' · in ${durationText(Duration(minutes: mins!))}'), style: sub),
+          ])),
+      ]),
+    ]);
+  }
+}
+
+class LiveNumbers extends StatelessWidget {
+  const LiveNumbers({super.key, required this.target, required this.state, this.withVertical = false});
+  final LiveTarget target;
+  final LiveState state;
+  final bool withVertical;
+
+  @override
+  Widget build(BuildContext context) {
     final s = state;
-    if (s == null) {
-      return Row(children: [
-        if (loading) const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-        else Icon(Icons.flight, size: 18, color: cs.onSurfaceVariant),
-        const SizedBox(width: 10),
-        Text(loading ? tr('Caut avionul…', 'Looking for the plane…') : tr('Avionul nu e în aer acum', 'The plane is not airborne now'),
-            style: t.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
-      ]);
-    }
-    final left = LiveApi.kmTo(s, target.to);
+    final vr = (s.verticalRate * 60).round(); // m/min
+    final vText = vr.abs() < 60 ? tr('constant', 'level') : '${vr > 0 ? '↑' : '↓'} ${km(vr.abs())} m/min';
     return CellRow([
       (tr('Altitudine', 'Altitude'), s.onGround ? tr('la sol', 'ground') : '${km(s.altitudeM)} m'),
       (tr('Viteză', 'Speed'), '${s.speedKmh.round()} km/h'),
-      (tr('Mai are', 'To go'), '${km(left)} km'),
+      if (withVertical) (tr('Vertical', 'Vertical'), vText),
+      (tr('Mai are', 'To go'), '${km(LiveApi.kmTo(s, target.to))} km'),
     ], big: false);
   }
 }

@@ -26,10 +26,12 @@ class BoardFlight {
     this.cancelledFlag = false,
     this.callsign = '',
     this.icao24 = '',
+    this.aircraft = '',
   });
 
   final String callsign;
   final String icao24;
+  final String aircraft;
 
   final String number; // "W6 3141"
   final String airline;
@@ -123,6 +125,7 @@ class BoardApi {
               cancelledFlag: f.cancelled || x.cancelled,
               callsign: f.callsign,
               icao24: f.icao24,
+              aircraft: f.aircraft,
             );
           }(),
       ];
@@ -374,6 +377,7 @@ class BoardApi {
       out.add(BoardFlight(
         callsign: (e['callSign'] ?? '').toString().replaceAll(' ', ''),
         icao24: (ac['modeS'] ?? '').toString().toLowerCase(),
+        aircraft: (ac['model'] ?? '').toString(),
         number: (e['number'] ?? '').toString(),
         airline: e['airline'] is Map ? ((e['airline'] as Map)['name'] ?? '').toString() : '',
         otherIata: iata,

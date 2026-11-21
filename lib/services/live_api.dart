@@ -17,15 +17,26 @@ class LiveState {
     required this.seen,
     this.icao24 = '',
     this.path = const [],
+    this.verticalRate = 0,
+    this.callsign = '',
+    this.country = '',
+    this.departedAt,
   });
   final String icao24;
+
+  /// m/s, positive when climbing.
+  final double verticalRate;
+  final String callsign;
+  final String country; // country of registration
+  final DateTime? departedAt;
 
   /// Flown path so far as (lat, lon) pairs, when OpenSky has it.
   final List<(double, double)> path;
 
-  LiveState withPath(List<(double, double)> p) => LiveState(
+  LiveState withPath(List<(double, double)> p, DateTime? start) => LiveState(
       lat: lat, lon: lon, altitudeM: altitudeM, speedKmh: speedKmh, track: track,
-      onGround: onGround, seen: seen, icao24: icao24, path: p);
+      onGround: onGround, seen: seen, icao24: icao24, path: p, verticalRate: verticalRate,
+      callsign: callsign, country: country, departedAt: start ?? departedAt);
   final double lat;
   final double lon;
   final double altitudeM;
@@ -33,6 +44,14 @@ class LiveState {
   final double track; // degrees, 0 = north
   final bool onGround;
   final DateTime seen;
+}
+
+class AircraftInfo {
+  AircraftInfo({this.registration = '', this.model = '', this.typecode = '', this.operator = ''});
+  final String registration;
+  final String model;
+  final String typecode;
+  final String operator;
 }
 
 class LiveApi {
@@ -85,26 +104,62 @@ class LiveApi {
       onGround: s[8] == true,
       seen: contact == null ? DateTime.now() : DateTime.fromMillisecondsSinceEpoch(contact * 1000),
       icao24: (s[0] ?? '').toString(),
+      callsign: (s[1] ?? '').toString().trim(),
+      country: (s[2] ?? '').toString(),
+      verticalRate: (s[11] as num?)?.toDouble() ?? 0,
     );
   }
 
+  static final Map<String, AircraftInfo?> _aircraft = {};
+
+  /// Registration and type from OpenSky's aircraft database (cached).
+  static Future<AircraftInfo?> aircraft(String icao24) async {
+    final k = icao24.toLowerCase();
+    if (k.isEmpty) return null;
+    if (_aircraft.containsKey(k)) return _aircraft[k];
+    AircraftInfo? info;
+    try {
+      final r = await http
+          .get(Uri.https(_base, '/api/metadata/aircraft/icao/$k'))
+          .timeout(const Duration(seconds: 15));
+      if (r.statusCode == 200) {
+        final j = jsonDecode(r.body);
+        if (j is Map) {
+          String f(String key) => (j[key] ?? '').toString().trim();
+          final maker = f('manufacturerName');
+          var model = f('model');
+          if (model.isNotEmpty && maker.isNotEmpty && !model.toLowerCase().contains(maker.split(' ').first.toLowerCase())) {
+            model = '${maker.split(' ').first} $model';
+          }
+          info = AircraftInfo(registration: f('registration'), model: model, typecode: f('typecode'), operator: f('operator'));
+        }
+      }
+    } catch (_) {}
+    _aircraft[k] = info;
+    return info;
+  }
+
   /// The plane's actual track so far (OpenSky experimental endpoint); empty if unavailable.
-  static Future<List<(double, double)>> path(String icao24) async {
-    if (icao24.isEmpty) return const [];
+  static Future<(List<(double, double)>, DateTime?)> path(String icao24) async {
+    if (icao24.isEmpty) return (const <(double, double)>[], null);
     try {
       final r = await http
           .get(Uri.https(_base, '/api/tracks/all', {'icao24': icao24.toLowerCase(), 'time': '0'}))
           .timeout(const Duration(seconds: 15));
-      if (r.statusCode != 200) return const [];
+      if (r.statusCode != 200) return (const <(double, double)>[], null);
       final j = jsonDecode(r.body);
       final pts = j is Map ? j['path'] : null;
-      if (pts is! List) return const [];
-      return [
-        for (final p in pts)
-          if (p is List && p.length > 2 && p[1] is num && p[2] is num) ((p[1] as num).toDouble(), (p[2] as num).toDouble()),
-      ];
+      if (pts is! List) return (const <(double, double)>[], null);
+      final st = j is Map ? (j['startTime'] as num?)?.toInt() : null;
+      return (
+        [
+          for (final p in pts)
+            if (p is List && p.length > 2 && p[1] is num && p[2] is num) ((p[1] as num).toDouble(), (p[2] as num).toDouble()),
+        ],
+        st == null ? null : DateTime.fromMillisecondsSinceEpoch(st * 1000),
+      );
     } catch (_) {
-      return const [];
+      return (const <(double, double)>[], null);
     }
   }
 
