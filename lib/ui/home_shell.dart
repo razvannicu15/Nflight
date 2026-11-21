@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../main.dart';
+import '../services/board_api.dart';
 import '../services/importer.dart';
 import '../services/native.dart';
 import '../services/notifier.dart';
@@ -42,6 +43,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       await Notifier.requestPermission();
       await Notifier.rescheduleAll();
       await StatusApi.refreshSoon();
+      await BoardApi.fillGates();
       StatusApi.backfillPast();
     });
   }
@@ -55,7 +57,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState s) {
-    if (s == AppLifecycleState.resumed && widget.startServices) StatusApi.refreshSoon();
+    if (s == AppLifecycleState.resumed && widget.startServices) {
+      StatusApi.refreshSoon().then((_) => BoardApi.fillGates());
+    }
   }
 
   void _openPass(String id) {

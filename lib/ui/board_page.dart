@@ -134,7 +134,7 @@ class _BoardPageState extends State<BoardPage> {
                   ),
                 ),
               ],
-              body: !StatusApi.enabled && widget.preview == null
+              body: !StatusApi.enabled && !BoardApi.hasOwnSource(_iata) && widget.preview == null
                   ? _message(tr('Status live inactiv', 'Live status is off'), retry: false)
                   : _loading
                       ? const Center(child: CircularProgressIndicator())
@@ -229,7 +229,11 @@ class _BoardPageState extends State<BoardPage> {
           child: Row(children: [
             SizedBox(width: 62, child: Text(tr('ORA', 'TIME'), style: header)),
             Expanded(child: Text(departures ? tr('SPRE', 'TO') : tr('DIN', 'FROM'), style: header)),
-            if (showPlace) SizedBox(width: 56, child: Text(departures ? tr('POARTA', 'GATE') : 'TERM.', style: header)),
+            if (showPlace)
+              SizedBox(
+                  width: 56,
+                  child: Text(departures ? tr('POARTA', 'GATE') : (BoardApi.hasOwnSource(_iata) ? tr('BANDA', 'BELT') : 'TERM.'),
+                      style: header)),
             if (showStatus) SizedBox(width: 92, child: Text('STATUS', textAlign: TextAlign.end, style: header)),
           ]),
         );
