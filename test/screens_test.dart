@@ -4,6 +4,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show debugDisableShadows;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nflight/core/airports.dart';
@@ -75,6 +76,7 @@ Widget app(Widget home, Brightness b) => MaterialApp(
     );
 
 Future<void> shot(WidgetTester t, String name, Widget home, {Brightness b = Brightness.light, Future<void> Function()? act}) async {
+  await t.pumpWidget(const SizedBox()); // fresh state for every screen
   await t.pumpWidget(app(home, b));
   await t.pumpAndSettle();
   if (act != null) {
@@ -90,6 +92,7 @@ void main() {
   setUpAll(() async {
     if (skip) return;
     TestWidgetsFlutterBinding.ensureInitialized();
+    debugDisableShadows = false; // real shadows, not the test outlines
     tzdata.initializeTimeZones();
     await loadFonts();
     await Airports.load();

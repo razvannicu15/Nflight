@@ -238,7 +238,7 @@ class _PassDetailPageState extends State<PassDetailPage> {
     final offset = a.tz.isEmpty ? '' : _offsetText(now.timeZoneOffset - DateTime.now().timeZoneOffset);
     return (
       role,
-      '${flag(a.country)}  ${a.label} · $iata',
+      '${a.label} · $iata',
       a.tz.isEmpty ? null : '${tr('ora locală', 'local time')} ${hm(now)}$offset',
     );
   }

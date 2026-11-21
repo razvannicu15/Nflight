@@ -230,9 +230,13 @@ class RouteHeader extends StatelessWidget {
 
 /// Compact list card for a flight.
 class PassTile extends StatelessWidget {
-  const PassTile(this.p, {super.key, required this.onTap});
+  const PassTile(this.p, {super.key, required this.onTap, this.showDate = false, this.others = 0});
   final FlightPass p;
   final VoidCallback onTap;
+  final bool showDate;
+
+  /// Other passengers on the same flight and booking.
+  final int others;
 
   @override
   Widget build(BuildContext context) {
@@ -254,9 +258,9 @@ class PassTile extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('${p.flightCode} · ${Airlines.name(p.carrier)}',
-                      style: t.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
-                  Text(shortDate(p.day), style: t.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+                  Text(Airlines.name(p.carrier), style: t.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
+                  Text(showDate ? '${p.flightCode} · ${shortDate(p.day)}' : p.flightCode,
+                      style: t.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
                 ]),
               ),
               StatusChip(p, dense: true),
@@ -269,7 +273,7 @@ class PassTile extends StatelessWidget {
                 Icon(Icons.person_outline, size: 16, color: cs.onSurfaceVariant),
                 const SizedBox(width: 4),
                 Expanded(
-                    child: Text(p.passenger,
+                    child: Text(others > 0 ? '${p.passenger} +$others' : p.passenger,
                         maxLines: 1, overflow: TextOverflow.ellipsis, style: t.bodySmall)),
                 if (p.seat.isNotEmpty) ...[
                   Icon(Icons.event_seat_outlined, size: 16, color: cs.onSurfaceVariant),
@@ -287,8 +291,9 @@ class PassTile extends StatelessWidget {
 
 /// Large card for the next flight, with countdown.
 class NextFlightCard extends StatelessWidget {
-  const NextFlightCard(this.p, {super.key, required this.onTap, required this.onShowCode});
+  const NextFlightCard(this.p, {super.key, required this.onTap, required this.onShowCode, this.others = 0});
   final FlightPass p;
+  final int others;
   final VoidCallback onTap;
   final VoidCallback onShowCode;
 
@@ -339,7 +344,9 @@ class NextFlightCard extends StatelessWidget {
               child: FilledButton.icon(
                 onPressed: p.barcode.isEmpty ? null : onShowCode,
                 icon: const Icon(Icons.qr_code_2),
-                label: Text(tr('Arată biletul', 'Show pass')),
+                label: Text(others == 0
+                    ? tr('Arată biletul', 'Show pass')
+                    : tr('Arată biletele (${others + 1})', 'Show passes (${others + 1})')),
                 style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
               ),
             ),
@@ -371,16 +378,22 @@ class CellRow extends StatelessWidget {
         child: Padding(
           padding: EdgeInsets.only(left: i == 0 ? 0 : 12, right: 4),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-            Text(c.$1.toUpperCase(),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: t.labelSmall?.copyWith(color: fg.withValues(alpha: 0.6), letterSpacing: 0.8)),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(c.$1.toUpperCase(),
+                  maxLines: 1,
+                  style: t.labelSmall?.copyWith(color: fg.withValues(alpha: 0.6), letterSpacing: 0.6)),
+            ),
             const SizedBox(height: 3),
-            Text(c.$2.isEmpty ? '—' : c.$2,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: (big ? t.titleLarge : t.titleMedium)
-                    ?.copyWith(color: fg, fontWeight: FontWeight.w700, fontFeatures: const [FontFeature.tabularFigures()])),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(c.$2.isEmpty ? '—' : c.$2,
+                  maxLines: 1,
+                  style: (big ? t.titleLarge : t.titleMedium)?.copyWith(
+                      color: fg, fontWeight: FontWeight.w700, fontFeatures: const [FontFeature.tabularFigures()])),
+            ),
           ]),
         ),
       ));

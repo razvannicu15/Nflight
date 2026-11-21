@@ -117,13 +117,25 @@ class Store extends ChangeNotifier {
   List<FlightPass> get upcoming {
     final l = passes.where((p) => !p.archived && !(autoArchive && isPast(p))).toList()
       ..sort((a, b) => departureOf(a).compareTo(departureOf(b)));
-    return l;
+    return _onePerFlight(l);
   }
 
   List<FlightPass> get history {
     final l = passes.where((p) => p.archived || (autoArchive && isPast(p))).toList()
       ..sort((a, b) => departureOf(b).compareTo(departureOf(a)));
-    return l;
+    return _onePerFlight(l);
+  }
+
+  /// Family on one booking shows as one flight (first pass added leads).
+  static List<FlightPass> _onePerFlight(List<FlightPass> l) {
+    final seen = <String>{};
+    final byAge = [...l]..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    final keep = <String>{};
+    for (final p in byAge) {
+      final k = '${p.carrier}${p.flightNumber}${p.date}${p.from}${p.pnr}';
+      if (p.pnr.isEmpty || seen.add(k)) keep.add(p.id);
+    }
+    return l.where((p) => keep.contains(p.id)).toList();
   }
 
   FlightPass? get next {

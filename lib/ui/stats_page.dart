@@ -114,7 +114,7 @@ class _StatsPageState extends State<StatsPage> {
     }
 
     String times(int n) => n == 1 ? tr('1 zbor', '1 flight') : tr('$n zboruri', '$n flights');
-    String route(FlightPass p) => '${p.from} → ${p.to}';
+    String route(FlightPass p) => '${p.from} – ${p.to}';
 
     return [
       // Hero: the one number people look for, the rest in a hairline row.
@@ -136,10 +136,10 @@ class _StatsPageState extends State<StatsPage> {
             const SizedBox(height: 18),
             CellRow([
               ('km', km(total)),
-              (tr('În aer', 'In air'), durationText(air)),
-              (tr('Aerop.', 'Airports'), '${airports.length}'),
+              (tr('Ore în aer', 'Hours flown'), '${(air.inMinutes / 60).round()}'),
+              (tr('Aeroporturi', 'Airports'), '${airports.length}'),
               (tr('Țări', 'Countries'), '${countries.length}'),
-            ], color: cs.onPrimaryContainer, big: false),
+            ], color: cs.onPrimaryContainer),
           ]),
         ),
       ),
@@ -158,8 +158,6 @@ class _StatsPageState extends State<StatsPage> {
       InfoTable([
         ..._top(tr('Rute', 'Routes'), f.map((p) => ([p.from, p.to]..sort()).join(' – ')), (k) => k, times),
         ..._top(tr('Companii', 'Airlines'), f.map((p) => p.carrier), Airlines.name, times),
-        ..._top(tr('Aeroporturi', 'Airports'), f.expand((p) => [p.from, p.to]),
-            (k) => '${Airports.city(k)} · $k', times),
       ]),
     ];
   }

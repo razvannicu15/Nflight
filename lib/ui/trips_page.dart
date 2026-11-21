@@ -56,6 +56,7 @@ class TripsPage extends StatelessWidget {
         next,
         onTap: () => _open(context, next),
         onShowCode: () => openBoardingCode(context, next),
+        others: store.companions(next).length,
       ));
       start = 1;
     }
@@ -68,7 +69,8 @@ class TripsPage extends StatelessWidget {
         items.add(SectionTitle(header));
         lastHeader = header;
       }
-      items.add(PassTile(p, onTap: () => _open(context, p)));
+      items.add(PassTile(p,
+          onTap: () => _open(context, p), showDate: history, others: store.companions(p).length));
     }
     items.add(const SizedBox(height: 96));
     return MaxWidth(
