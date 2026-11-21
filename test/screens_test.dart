@@ -126,7 +126,6 @@ void main() {
   setUpAll(() async {
     if (skip) return;
     TestWidgetsFlutterBinding.ensureInitialized();
-    debugDisableShadows = false; // real shadows, not the test outlines
     tzdata.initializeTimeZones();
     await loadFonts();
     await Airports.load();
@@ -134,6 +133,8 @@ void main() {
 
   for (final lang in ['ro', 'en']) {
     testWidgets('screens $lang', (t) async {
+      debugDisableShadows = false; // real shadows, not the test outlines
+      addTearDown(() => debugDisableShadows = true); // the framework checks it is restored
       t.view.physicalSize = const Size(1080, 2400);
       t.view.devicePixelRatio = 2.625;
       addTearDown(t.view.reset);
