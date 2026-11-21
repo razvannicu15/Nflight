@@ -186,7 +186,7 @@ class _QuotaRow extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final q = this.q;
     final rem = q?.remaining, lim = q?.limit;
-    final frac = (rem != null && lim != null && lim > 0) ? (rem / lim).clamp(0.0, 1.0) : null;
+    final frac = (active && rem != null && lim != null && lim > 0) ? (rem / lim).clamp(0.0, 1.0) : null;
     final low = frac != null && frac < 0.15;
     final String right;
     if (!active) {
