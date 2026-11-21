@@ -178,7 +178,8 @@ class LiveMap extends StatelessWidget {
 
   /// Points along the great circle, so long routes curve like on real maps.
   static List<LatLng> greatCircle(LatLng a, LatLng b, {int n = 64}) {
-    double rad(double d) => d * pi / 180, deg(double r) => r * 180 / pi;
+    double rad(double d) => d * pi / 180;
+    double deg(double r) => r * 180 / pi;
     final la1 = rad(a.latitude), lo1 = rad(a.longitude), la2 = rad(b.latitude), lo2 = rad(b.longitude);
     final d = 2 * asin(sqrt(pow(sin((la2 - la1) / 2), 2) + cos(la1) * cos(la2) * pow(sin((lo2 - lo1) / 2), 2)));
     if (d == 0) return [a, b];
