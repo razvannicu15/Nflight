@@ -9,6 +9,7 @@ import '../core/i18n.dart';
 import '../models/pass.dart';
 import '../services/notifier.dart';
 import '../services/board_api.dart';
+import '../services/live_api.dart';
 import '../services/quota.dart';
 import '../services/status_api.dart';
 import '../services/store.dart';
@@ -127,7 +128,11 @@ class _SettingsPageState extends State<SettingsPage> {
                           active: StatusApi.enabled),
                       if (BoardApi.avKey.isNotEmpty)
                         _QuotaRow(tr('Rezervă tabele', 'Backup boards'), 'aviationstack', Quota.get(Quota.aviationstack)),
-                      _QuotaRow(tr('Hartă live', 'Live map'), 'OpenSky', Quota.get(Quota.opensky), last: true),
+                      _QuotaRow(tr('Hartă live', 'Live map'), LiveApi.authed ? 'OpenSky · ${tr('cont', 'account')}' : 'OpenSky',
+                          Quota.get(Quota.opensky, expectedLimit: LiveApi.authed ? 4000 : 400),
+                          error: LiveApi.authError == null ? null : tr('autentificare eșuată (${LiveApi.authError}) · verifică client_id și secret',
+                              'login failed (${LiveApi.authError}) · check client_id and secret'),
+                          last: true),
                     ]),
                   ),
                 ),
@@ -164,7 +169,8 @@ class _SettingsPageState extends State<SettingsPage> {
 
 /// One data source: remaining / total, a slim bar and when it refills.
 class _QuotaRow extends StatelessWidget {
-  const _QuotaRow(this.title, this.source, this.q, {this.active = true, this.last = false});
+  const _QuotaRow(this.title, this.source, this.q, {this.active = true, this.last = false, this.error});
+  final String? error;
   final String title;
   final String source;
   final QuotaInfo? q;
@@ -236,6 +242,10 @@ class _QuotaRow extends StatelessWidget {
           if (sub.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(sub, style: t.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+          ],
+          if (error != null) ...[
+            const SizedBox(height: 4),
+            Text(error!, style: t.bodySmall?.copyWith(color: cs.error, fontWeight: FontWeight.w600)),
           ],
         ]),
       ),

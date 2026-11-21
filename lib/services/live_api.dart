@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:http/http.dart' as http;
 
 import '../core/airports.dart';
+import '../core/i18n.dart';
 import 'quota.dart';
 
 /// A plane's position from OpenSky Network (free ADS-B data, non-commercial use).
@@ -65,6 +66,9 @@ class LiveApi {
   static String? _token;
   static DateTime? _tokenExp;
 
+  /// Set when the account login is rejected (wrong client id / secret).
+  static String? authError;
+
   static Future<Map<String, String>> _headers() async {
     if (!authed) return const {};
     if (_token == null || _tokenExp == null || DateTime.now().isAfter(_tokenExp!)) {
@@ -74,12 +78,15 @@ class LiveApi {
           body: {'grant_type': 'client_credentials', 'client_id': _clientId, 'client_secret': _clientSecret},
         ).timeout(const Duration(seconds: 15));
         final j = jsonDecode(r.body);
+        authError = r.statusCode == 200 ? null : 'HTTP ${r.statusCode}';
         if (r.statusCode == 200 && j is Map && j['access_token'] is String) {
           _token = j['access_token'] as String;
           final exp = (j['expires_in'] as num?)?.toInt() ?? 1800;
           _tokenExp = DateTime.now().add(Duration(seconds: exp - 60));
         }
-      } catch (_) {}
+      } catch (_) {
+        authError ??= tr('fără conexiune', 'no connection');
+      }
     }
     return _token == null ? const {} : {'Authorization': 'Bearer $_token'};
   }

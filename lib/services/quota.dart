@@ -31,9 +31,14 @@ class Quota {
   static const aviationstack = 'aviationstack';
   static const opensky = 'opensky';
 
-  static QuotaInfo? get(String src) {
+  static QuotaInfo? get(String src, {int? expectedLimit}) {
     final q = store.quotas[src];
     if (q == null) return null;
+    // Saved before the plan changed (e.g. anonymous 400 -> account 4000): not meaningful any more.
+    if (expectedLimit != null && q.limit != null && q.limit != expectedLimit) {
+      store.quotas.remove(src);
+      return null;
+    }
     // Past the reset time: the allowance is full again.
     if (q.resetAt != null && DateTime.now().isAfter(q.resetAt!) && q.limit != null) {
       q.remaining = q.limit;
