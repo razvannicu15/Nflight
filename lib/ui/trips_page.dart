@@ -89,25 +89,8 @@ class _EmptyTrips extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
-    Widget step(int n, String title, String text) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            CircleAvatar(
-              radius: 14,
-              backgroundColor: cs.primaryContainer,
-              child: Text('$n', style: TextStyle(color: cs.onPrimaryContainer, fontWeight: FontWeight.w700)),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, style: t.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-                Text(text, style: t.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
-              ]),
-            ),
-          ]),
-        );
     return MaxWidth(
-      child: ListView(padding: const EdgeInsets.fromLTRB(24, 16, 24, 120), children: [
+      child: ListView(padding: const EdgeInsets.fromLTRB(24, 72, 24, 120), children: [
         Center(
           child: Container(
             width: 112,
@@ -119,13 +102,9 @@ class _EmptyTrips extends StatelessWidget {
         const SizedBox(height: 20),
         Text(tr('Niciun zbor încă', 'No flights yet'), textAlign: TextAlign.center, style: t.headlineSmall),
         const SizedBox(height: 6),
-        Text(tr('Adaugă primul bilet de îmbarcare. Rămâne doar pe telefonul tău și merge fără internet.', 'Add your first boarding pass. It stays on your phone and works offline.'),
+        Text(tr('Scanează biletul sau deschide PDF-ul de la companie.', 'Scan your pass or open the airline PDF.'),
             textAlign: TextAlign.center, style: t.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
-        const SizedBox(height: 24),
-        step(1, tr('Fă check-in online', 'Check in online'), tr('În aplicația sau pe site-ul companiei aeriene.', 'In the airline app or on its website.')),
-        step(2, tr('Ia biletul', 'Get the pass'), tr('PDF-ul primit pe e-mail, o captură de ecran sau biletul tipărit.', 'The PDF from your email, a screenshot or the printed pass.')),
-        step(3, tr('Adaugă-l aici', 'Add it here'), tr('Apasă „Adaugă” sau trimite fișierul spre Nflight din „Distribuie”.', 'Tap “Add” or send the file to Nflight from “Share”.')),
-        const SizedBox(height: 20),
+        const SizedBox(height: 28),
         FilledButton.icon(
           onPressed: () => showAddSheet(context),
           icon: const Icon(Icons.add),

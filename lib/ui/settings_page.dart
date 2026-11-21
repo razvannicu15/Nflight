@@ -32,13 +32,8 @@ class _SettingsPageState extends State<SettingsPage> {
       builder: (ctx) => AlertDialog(
         title: Text(tr('Cheie AeroDataBox', 'AeroDataBox key')),
         content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(tr(
-              'Pentru întârzieri, poartă și terminal în timp real. Fă-ți un cont gratuit pe '
-                  'rapidapi.com, abonează-te la planul gratuit AeroDataBox și copiază aici cheia '
-                  '„X-RapidAPI-Key”. Fără cheie, aplicația merge normal, doar fără status live.',
-              'For real-time delays, gate and terminal. Create a free account on rapidapi.com, '
-                  'subscribe to the free AeroDataBox plan and paste the “X-RapidAPI-Key” here. '
-                  'Without a key the app works normally, just without live status.')),
+          Text(tr('Cheie gratuită de pe rapidapi.com (AeroDataBox).',
+              'Free key from rapidapi.com (AeroDataBox).')),
           const SizedBox(height: 16),
           TextField(
             controller: c,
@@ -127,14 +122,11 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               SwitchListTile(
                 title: Text(tr('Cu 3 ore înainte', '3 hours before')),
-                subtitle: Text(tr('Cu terminalul și poarta, dacă sunt anunțate', 'With terminal and gate, when announced')),
                 value: store.remind3h,
                 onChanged: (v) => _set(() => store.remind3h = v, reschedule: true),
               ),
               SwitchListTile(
                 title: Text(tr('La îmbarcare', 'At boarding')),
-                subtitle: Text(tr('Cu 45 de minute înainte; atingi și se deschide biletul',
-                    '45 minutes before; tap to open your pass')),
                 value: store.remindBoarding,
                 onChanged: (v) => _set(() => store.remindBoarding = v, reschedule: true),
               ),
@@ -143,25 +135,19 @@ class _SettingsPageState extends State<SettingsPage> {
                 leading: Icon(StatusApi.enabled ? Icons.cloud_done_outlined : Icons.cloud_off_outlined,
                     color: StatusApi.enabled ? cs.primary : null),
                 title: Text(tr('Cheie AeroDataBox', 'AeroDataBox key')),
-                subtitle: Text(StatusApi.enabled
-                    ? tr('Activ · se verifică doar zborurile din următoarele 36 de ore',
-                        'On · only flights in the next 36 hours are checked')
-                    : tr('Opțional · întârzieri, poartă și terminal', 'Optional · delays, gate and terminal')),
+                subtitle: Text(StatusApi.enabled ? tr('Activ', 'On') : tr('Opțional', 'Optional')),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: _editKey,
               ),
               SectionTitle(tr('Bilete', 'Passes')),
               SwitchListTile(
                 title: Text(tr('Mută automat în istoric', 'Move to history automatically')),
-                subtitle: Text(tr('Zborurile încheiate dispar din lista principală', 'Past flights leave the main list')),
                 value: store.autoArchive,
                 onChanged: (v) => _set(() => store.autoArchive = v),
               ),
               ListTile(
                 leading: const Icon(Icons.save_alt),
                 title: Text(tr('Salvează o copie de siguranță', 'Save a backup')),
-                subtitle: Text(tr('${store.passes.length} bilete, într-un fișier .json',
-                    '${store.passes.length} passes, in a .json file')),
                 onTap: _export,
               ),
               ListTile(
@@ -173,8 +159,7 @@ class _SettingsPageState extends State<SettingsPage> {
               ListTile(
                 leading: const Icon(Icons.info_outline),
                 title: const Text('Nflight 0.1'),
-                subtitle: Text(tr('Fără reclame, fără cont. Biletele rămân doar pe telefonul tău. norAz',
-                    'No ads, no account. Your passes stay on your phone. norAz')),
+                subtitle: Text(tr('Fără reclame · norAz', 'No ads · norAz')),
               ),
             ]),
           ),

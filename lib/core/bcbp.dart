@@ -58,14 +58,19 @@ int? _hex(String s) => int.tryParse(s.trim(), radix: 16);
 /// Returns null when [data] is not a BCBP string.
 BcbpPass? parseBcbp(String data) {
   try {
-    return _parse(data);
+    final direct = _parse(data);
+    if (direct != null) return direct;
+    // Some scanners/apps prepend bytes (e.g. "]L0" symbology ids) or wrap the data.
+    final m = RegExp(r'M[1-4][A-Z/ .\-]{20}[E ]').firstMatch(data);
+    if (m != null && m.start > 0) return _parse(data.substring(m.start));
+    return null;
   } catch (_) {
     return null;
   }
 }
 
 BcbpPass? _parse(String raw) {
-  final s = raw.replaceAll('\r', '').replaceAll('\n', '');
+  final s = raw.replaceAll('\r', '').replaceAll('\n', '').replaceAll('\u0000', '');
   if (s.length < 60 || s[0] != 'M') return null;
   final legCount = int.tryParse(s[1]);
   if (legCount == null || legCount < 1 || legCount > 4) return null;

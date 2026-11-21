@@ -18,15 +18,11 @@ Future<void> showAddSheet(BuildContext context) async {
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-          child: Text(tr('Adaugă un bilet de îmbarcare', 'Add a boarding pass'), style: Theme.of(c).textTheme.titleLarge),
+          child: Text(tr('Adaugă bilet', 'Add pass'), style: Theme.of(c).textTheme.titleLarge),
         ),
-        _opt(c, 'camera', Icons.qr_code_scanner, tr('Scanează cu camera', 'Scan with camera'),
-            tr('Bilet pe hârtie sau pe alt ecran', 'Paper pass or another screen')),
-        _opt(c, 'file', Icons.upload_file, tr('Din fișier', 'From a file'),
-            tr('PDF-ul de la companie, captură de ecran, poză sau .pkpass',
-                'Airline PDF, screenshot, photo or .pkpass')),
-        _opt(c, 'manual', Icons.edit_note, tr('Manual', 'Manually'),
-            tr('Zbor fără bilet digital', 'Flight without a digital pass')),
+        _opt(c, 'camera', Icons.qr_code_scanner, tr('Scanează', 'Scan')),
+        _opt(c, 'file', Icons.upload_file, tr('Din fișier', 'From a file'), 'PDF · ${tr('imagine', 'image')} · .pkpass'),
+        _opt(c, 'manual', Icons.edit_note, tr('Manual', 'Manually')),
         const SizedBox(height: 8),
       ]),
     ),
@@ -49,14 +45,14 @@ Future<void> showAddSheet(BuildContext context) async {
   }
 }
 
-Widget _opt(BuildContext c, String v, IconData icon, String title, String sub) => ListTile(
+Widget _opt(BuildContext c, String v, IconData icon, String title, [String? sub]) => ListTile(
       leading: CircleAvatar(
         backgroundColor: Theme.of(c).colorScheme.secondaryContainer,
         foregroundColor: Theme.of(c).colorScheme.onSecondaryContainer,
         child: Icon(icon),
       ),
       title: Text(title),
-      subtitle: Text(sub),
+      subtitle: sub == null ? null : Text(sub),
       onTap: () => Navigator.pop(c, v),
     );
 
@@ -104,8 +100,11 @@ Future<void> saveImported(BuildContext context, ImportResult res) async {
   for (final p in saved) {
     await Notifier.schedule(p);
   }
+  final allPast = saved.every(Store.isPast);
   messenger.showSnackBar(SnackBar(
-      content: Text(saved.length == 1
+      content: Text(allPast
+          ? tr('Zbor încheiat · salvat în Istoric', 'Past flight · saved to History')
+          : saved.length == 1
           ? tr('Bilet salvat: ${saved.first.flightCode}, ${saved.first.route}',
               'Pass saved: ${saved.first.flightCode}, ${saved.first.route}')
           : tr('${saved.length} zboruri salvate', '${saved.length} flights saved'))));

@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../core/bcbp.dart';
-import '../services/importer.dart';
 import '../core/i18n.dart';
+import '../services/importer.dart';
 
-/// Live camera scanner. Pops with the boarding codes it found.
+/// Live camera scanner. Pops with the codes it found.
 class ScanPage extends StatefulWidget {
   const ScanPage({super.key});
   @override
@@ -14,14 +14,33 @@ class ScanPage extends StatefulWidget {
 }
 
 class _ScanPageState extends State<ScanPage> {
-  final _ctl = MobileScannerController(formats: boardingFormats, detectionSpeed: DetectionSpeed.normal);
+  // Full HD analysis: dense PDF417 codes are unreadable at the 640x480 default.
+  final _ctl = MobileScannerController(
+    formats: boardingFormats,
+    detectionSpeed: DetectionSpeed.unrestricted,
+    cameraResolution: const Size(1920, 1080),
+    autoZoom: true,
+  );
   bool _done = false;
-  String? _hint;
+  bool _torch = false;
+  double _zoom = 0;
+  double _zoomStart = 0;
+
+  // A non-standard code is accepted once it has been seen a few times,
+  // so a stray QR in the background does not win over the boarding pass.
+  String? _other;
+  int _otherHits = 0;
 
   @override
   void dispose() {
     _ctl.dispose();
     super.dispose();
+  }
+
+  void _finish(List<ScannedCode> codes) {
+    if (_done) return;
+    _done = true;
+    Navigator.pop(context, codes);
   }
 
   void _onDetect(BarcodeCapture cap) {
@@ -30,11 +49,15 @@ class _ScanPageState extends State<ScanPage> {
       final v = b.rawValue;
       if (v == null || v.isEmpty) continue;
       if (parseBcbp(v) != null) {
-        _done = true;
-        Navigator.pop(context, [ScannedCode(v, formatName(b.format))]);
+        _finish([ScannedCode(v, formatName(b.format))]);
         return;
       }
-      setState(() => _hint = tr('Codul găsit nu este un bilet de îmbarcare.', 'That code is not a boarding pass.'));
+      if (v == _other) {
+        if (++_otherHits >= 6) _finish([ScannedCode(v, formatName(b.format))]);
+      } else {
+        _other = v;
+        _otherHits = 1;
+      }
     }
   }
 
@@ -45,59 +68,71 @@ class _ScanPageState extends State<ScanPage> {
     final codes = await Importer.scanImage(path);
     if (!mounted) return;
     if (codes.isEmpty) {
-      setState(() => _hint = tr('Nu am găsit niciun cod în imagine.', 'No code found in the image.'));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(tr('Niciun cod în imagine', 'No code in this image'))));
       return;
     }
-    _done = true;
-    Navigator.pop(context, codes);
+    _finish(codes);
   }
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
-    final w = size.width * 0.84;
-    final window = Rect.fromCenter(center: size.center(Offset.zero) - const Offset(0, 40), width: w, height: w * 0.62);
+    final w = size.width * 0.86;
+    final window = Rect.fromCenter(
+        center: size.center(Offset.zero) - const Offset(0, 40), width: w, height: w * 0.66);
     return Scaffold(
       backgroundColor: Colors.black,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
-        title: Text(tr('Scanează biletul', 'Scan your pass')),
         actions: [
           IconButton(
-            tooltip: tr('Lanternă', 'Flashlight'),
-            icon: const Icon(Icons.flashlight_on_outlined),
-            onPressed: () => _ctl.toggleTorch(),
+            icon: Icon(_torch ? Icons.flashlight_off_outlined : Icons.flashlight_on_outlined),
+            onPressed: () {
+              _ctl.toggleTorch();
+              setState(() => _torch = !_torch);
+            },
           ),
         ],
       ),
-      body: Stack(fit: StackFit.expand, children: [
-        MobileScanner(controller: _ctl, onDetect: _onDetect),
-        CustomPaint(painter: _Frame(window)),
-        Positioned(
-          left: 24,
-          right: 24,
-          top: window.bottom + 24,
-          child: Text(
-            _hint ?? tr('Încadrează codul de pe bilet (pătrat sau dreptunghiular).', 'Fit the code from your pass in the frame (square or rectangular).'),
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white, fontSize: 15),
-          ),
-        ),
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 40,
-          child: Center(
-            child: FilledButton.tonalIcon(
-              onPressed: _fromGallery,
-              icon: const Icon(Icons.photo_library_outlined),
-              label: Text(tr('Din galerie', 'From gallery')),
+      body: GestureDetector(
+        onScaleStart: (_) => _zoomStart = _zoom,
+        onScaleUpdate: (d) {
+          final z = (_zoomStart + (d.scale - 1) * 0.5).clamp(0.0, 1.0);
+          if ((z - _zoom).abs() > 0.01) {
+            _zoom = z;
+            _ctl.setZoomScale(z);
+          }
+        },
+        child: Stack(fit: StackFit.expand, children: [
+          MobileScanner(controller: _ctl, onDetect: _onDetect),
+          IgnorePointer(child: CustomPaint(painter: _Frame(window))),
+          Positioned(
+            left: 24,
+            right: 24,
+            top: window.bottom + 20,
+            child: Text(
+              tr('Încadrează codul de pe bilet', 'Frame the code on your pass'),
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
             ),
           ),
-        ),
-      ]),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 48,
+            child: Center(
+              child: FilledButton.tonalIcon(
+                onPressed: _fromGallery,
+                icon: const Icon(Icons.photo_library_outlined),
+                label: Text(tr('Din galerie', 'From gallery')),
+              ),
+            ),
+          ),
+        ]),
+      ),
     );
   }
 }
@@ -108,18 +143,34 @@ class _Frame extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final r = RRect.fromRectAndRadius(window, const Radius.circular(20));
+    final r = RRect.fromRectAndRadius(window, const Radius.circular(24));
     final bg = Path()
       ..addRect(Offset.zero & size)
       ..addRRect(r)
       ..fillType = PathFillType.evenOdd;
-    canvas.drawPath(bg, Paint()..color = Colors.black.withValues(alpha: 0.55));
-    canvas.drawRRect(
-        r,
-        Paint()
-          ..color = Colors.white
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 3);
+    canvas.drawPath(bg, Paint()..color = Colors.black.withValues(alpha: 0.5));
+    // Corner brackets only: cleaner than a full outline.
+    final p = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round;
+    const l = 34.0, rad = 24.0;
+    final w = window;
+    for (final (x, y, sx, sy) in [
+      (w.left, w.top, 1.0, 1.0),
+      (w.right, w.top, -1.0, 1.0),
+      (w.left, w.bottom, 1.0, -1.0),
+      (w.right, w.bottom, -1.0, -1.0),
+    ]) {
+      final path = Path()
+        ..moveTo(x, y + sy * (rad + l))
+        ..lineTo(x, y + sy * rad)
+        ..arcToPoint(Offset(x + sx * rad, y),
+            radius: const Radius.circular(rad), clockwise: sx * sy > 0)
+        ..lineTo(x + sx * (rad + l), y);
+      canvas.drawPath(path, p);
+    }
   }
 
   @override

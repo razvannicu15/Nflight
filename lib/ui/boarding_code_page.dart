@@ -128,26 +128,19 @@ class _BoardingCodePageState extends State<BoardingCodePage> {
             ),
           ),
           const SizedBox(height: 28),
-          Row(children: [
-            Expanded(child: _cell(tr('De la', 'From'), p.from)),
-            Expanded(child: _cell(tr('Spre', 'To'), p.to)),
-            Expanded(child: _cell(tr('Loc', 'Seat'), p.seat)),
-          ]),
-          const SizedBox(height: 16),
-          Row(children: [
-            Expanded(child: _cell(tr('Poarta', 'Gate'), p.gate)),
-            Expanded(child: _cell(tr('Îmbarcare', 'Boarding'), p.boarding ?? '')),
-            Expanded(child: _cell(tr('Secvență', 'Seq.'), p.sequence)),
-          ]),
+          CellRow([
+            (tr('De la', 'From'), p.from),
+            (tr('Spre', 'To'), p.to),
+            (tr('Loc', 'Seat'), p.seat),
+          ], color: ink),
+          const Divider(height: 32, color: Colors.black12),
+          CellRow([
+            (tr('Poarta', 'Gate'), p.gate),
+            (tr('Îmbarcare', 'Boarding'), p.boarding ?? ''),
+            (tr('Secvență', 'Seq.'), p.sequence),
+          ], color: ink),
         ]),
       );
     });
   }
-
-  Widget _cell(String l, String v) => Column(children: [
-        Text(l.toUpperCase(), style: const TextStyle(fontSize: 11, letterSpacing: 1, color: Colors.black54)),
-        const SizedBox(height: 2),
-        Text(v.isEmpty ? '—' : v,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Color(0xFF111318))),
-      ]);
 }

@@ -147,8 +147,6 @@ class _EditPassPageState extends State<EditPassPage> {
             ]),
             _tile(Icons.door_front_door_outlined, tr('Îmbarcare', 'Boarding'), _boarding ?? '—',
                 () => _pickTime(_boarding, (v) => _boarding = v)),
-            Text(tr('Orele sunt cele locale ale fiecărui aeroport, ca pe bilet.', 'Times are local to each airport, as on the pass.'),
-                style: t.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
             const SizedBox(height: 20),
             Text(tr('Bilet', 'Pass'), style: t.titleSmall?.copyWith(color: cs.primary)),
             gap,

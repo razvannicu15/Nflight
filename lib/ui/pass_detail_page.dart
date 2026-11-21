@@ -124,154 +124,122 @@ class _PassDetailPageState extends State<PassDetailPage> {
             elevation: 0,
             color: cs.surfaceContainerLow,
             margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            clipBehavior: Clip.antiAlias,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  AirlineBadge(p.carrier, size: 40),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(Airlines.name(p.carrier), style: t.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                      Text(longDate(p.day), style: t.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
-                    ]),
-                  ),
-                  StatusChip(p),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 6),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    AirlineBadge(p.carrier, size: 40),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(Airlines.name(p.carrier), style: t.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                        Text(longDate(p.day), style: t.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
+                      ]),
+                    ),
+                    StatusChip(p),
+                  ]),
+                  const SizedBox(height: 20),
+                  RouteHeader(p, large: true),
+                  if (upcoming && p.departure != null) ...[
+                    const SizedBox(height: 12),
+                    Text(tr('Pleacă ${countdown(dep)}', 'Departs ${countdown(dep)}'),
+                        style: t.titleSmall?.copyWith(color: cs.primary, fontWeight: FontWeight.w700)),
+                  ],
+                  if (p.departure == null) ...[
+                    const SizedBox(height: 12),
+                    ActionChip(
+                      avatar: const Icon(Icons.schedule, size: 18),
+                      label: Text(tr('Adaugă ora plecării', 'Add departure time')),
+                      onPressed: () => StatusApi.enabled
+                          ? _refresh(p)
+                          : Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => EditPassPage(existing: p))),
+                    ),
+                  ],
                 ]),
-                const SizedBox(height: 20),
-                RouteHeader(p, large: true),
-                if (upcoming && p.departure != null) ...[
-                  const SizedBox(height: 14),
-                  Text(tr('Pleacă ${countdown(dep)}', 'Departs ${countdown(dep)}'),
-                      style: t.titleSmall?.copyWith(color: cs.primary, fontWeight: FontWeight.w700)),
-                ],
-                if (p.departure == null) ...[
-                  const SizedBox(height: 14),
-                  ActionChip(
-                    avatar: const Icon(Icons.schedule, size: 18),
-                    label: Text(StatusApi.enabled ? tr('Ora plecării: actualizează status', 'Departure time: refresh status') : tr('Adaugă ora plecării', 'Add departure time')),
-                    onPressed: () => StatusApi.enabled
-                        ? _refresh(p)
-                        : Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => EditPassPage(existing: p))),
+              ),
+              const TicketDivider(),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 6, 20, 20),
+                child: Column(children: [
+                  CellRow([
+                    ('Terminal', p.terminal),
+                    (tr('Poarta', 'Gate'), p.gate),
+                    (tr('Îmbarcare', 'Boarding'), p.boarding ?? ''),
+                    (tr('Loc', 'Seat'), p.seat),
+                  ]),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: p.barcode.isEmpty ? null : () => openBoardingCode(context, p),
+                      icon: const Icon(Icons.qr_code_2),
+                      label: Text(companions.isEmpty
+                          ? tr('Arată biletul', 'Show pass')
+                          : tr('Arată biletele (${companions.length + 1})', 'Show passes (${companions.length + 1})')),
+                      style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+                    ),
                   ),
-                ],
-                const SizedBox(height: 20),
-                _grid([
-                  InfoCell('Terminal', p.terminal, big: true),
-                  InfoCell(tr('Poarta', 'Gate'), p.gate, big: true),
-                  InfoCell(tr('Îmbarcare', 'Boarding'), p.boarding ?? '', big: true),
-                  InfoCell(tr('Loc', 'Seat'), p.seat, big: true),
                 ]),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: p.barcode.isEmpty ? null : () => openBoardingCode(context, p),
-                    icon: const Icon(Icons.qr_code_2),
-                    label: Text(companions.isEmpty
-                        ? tr('Arată biletul', 'Show pass')
-                        : tr('Arată biletele (${companions.length + 1} pasageri)', 'Show passes (${companions.length + 1} passengers)')),
-                    style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-                  ),
-                ),
-              ]),
-            ),
+              ),
+            ]),
           ),
-          SectionTitle(tr('Pasager', 'Passenger')),
-          _infoCard(context, [
-            InfoCell(tr('Nume', 'Name'), p.passenger),
-            InfoCell(tr('Rezervare (PNR)', 'Booking (PNR)'), p.pnr),
-            InfoCell(tr('Clasă', 'Cabin'), p.cabin),
-            InfoCell(tr('Secvență', 'Sequence'), p.sequence),
-            if (p.frequentFlyer.isNotEmpty) InfoCell(tr('Fidelitate', 'Frequent flyer'), p.frequentFlyer),
-            if (p.aircraft.isNotEmpty) InfoCell(tr('Avion', 'Aircraft'), p.aircraft),
+          SectionTitle(tr('Bilet', 'Pass')),
+          InfoTable([
+            (tr('Pasager', 'Passenger'), p.passenger, null),
+            (tr('Rezervare', 'Booking'), p.pnr, null),
+            (tr('Clasă', 'Cabin'), p.cabin, null),
+            (tr('Secvență', 'Sequence'), p.sequence, null),
+            (tr('Fidelitate', 'Frequent flyer'), p.frequentFlyer, null),
+            (tr('Avion', 'Aircraft'), p.aircraft, null),
+            (tr('Notă', 'Note'), p.note, null),
           ]),
           if (companions.isNotEmpty) ...[
-            SectionTitle(tr('Pe aceeași rezervare', 'On the same booking')),
+            SectionTitle(tr('Aceeași rezervare', 'Same booking')),
             for (final c in companions)
               ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 24),
                 leading: const CircleAvatar(child: Icon(Icons.person_outline)),
                 title: Text(c.passenger),
-                subtitle: Text(c.seat.isEmpty ? tr('Fără loc', 'No seat') : '${tr('Loc', 'Seat')} ${c.seat}'),
+                trailing: Text(c.seat, style: t.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                 onTap: () => Navigator.of(context).pushReplacement(
                     MaterialPageRoute(builder: (_) => PassDetailPage(passId: c.id))),
               ),
           ],
-          SectionTitle(tr('Aeroporturi', 'Airports')),
-          _airport(context, p.from, tr('Plecare', 'Departure')),
-          _airport(context, p.to, tr('Sosire', 'Arrival')),
-          if (dist > 0)
-            ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-              leading: const Icon(Icons.straighten),
-              title: Text('${km(dist)} km'),
-              subtitle: Text('${tr('Durată', 'Duration')} ${durationText(flightDuration(p))}'
-                  '${p.departure != null && p.arrival != null ? '' : tr(' (estimată)', ' (estimated)')}'),
-            ),
-          SectionTitle(tr('Ajutor', 'Help')),
-          ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-            leading: const Icon(Icons.euro),
-            title: Text(tr('Compensație pentru întârziere sau anulare', 'Compensation for delay or cancellation')),
-            subtitle: Text(tr('Calcul orientativ după regulamentul UE 261/2004', 'Rough estimate under EU Regulation 261/2004')),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => showCompensationSheet(context, p),
-          ),
-          if (p.note.isNotEmpty) ...[
-            SectionTitle(tr('Notă', 'Note')),
-            Padding(padding: const EdgeInsets.symmetric(horizontal: 24), child: Text(p.note)),
-          ],
-          if (p.statusCheckedAt != null)
+          SectionTitle(tr('Zbor', 'Flight')),
+          InfoTable([
+            _airportRow(tr('Plecare', 'From'), p.from),
+            _airportRow(tr('Sosire', 'To'), p.to),
+            if (dist > 0)
+              (tr('Distanță', 'Distance'), '${km(dist)} km · ${durationText(flightDuration(p))}', null),
+          ]),
+          if (p.status == FlightStatus.cancelled || p.delayMinutes >= 120 || !upcoming)
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-              child: Text(tr('Status verificat la ${hm(p.statusCheckedAt!)}', 'Status checked at ${hm(p.statusCheckedAt!)}'),
-                  style: t.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: OutlinedButton.icon(
+                onPressed: () => showCompensationSheet(context, p),
+                icon: const Icon(Icons.euro),
+                label: Text(tr('Compensație UE 261', 'EU 261 compensation')),
+                style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+              ),
             ),
         ]),
       ),
     );
   }
 
-  Widget _grid(List<Widget> cells) => Row(children: [for (final c in cells) Expanded(child: c)]);
-
-  Widget _infoCard(BuildContext context, List<Widget> cells) {
-    final rows = <Widget>[];
-    for (var i = 0; i < cells.length; i += 2) {
-      rows.add(Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(children: [
-          Expanded(child: cells[i]),
-          Expanded(child: i + 1 < cells.length ? cells[i + 1] : const SizedBox()),
-        ]),
-      ));
-    }
-    return Card(
-      elevation: 0,
-      color: Theme.of(context).colorScheme.surfaceContainerLow,
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(padding: const EdgeInsets.fromLTRB(20, 10, 20, 10), child: Column(children: rows)),
-    );
-  }
-
-  Widget _airport(BuildContext context, String iata, String role) {
+  (String, String, String?) _airportRow(String role, String iata) {
     final a = Airports.get(iata);
+    if (a == null) return (role, iata, null);
     final now = Airports.nowAt(iata);
-    final offset = Airports.location(iata) == null
-        ? ''
-        : _offsetText(now.timeZoneOffset - DateTime.now().timeZoneOffset);
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-      leading: CircleAvatar(child: Text(a == null ? '✈' : flag(a.country))),
-      title: Text(a == null ? iata : '${a.label} ($iata)'),
-      subtitle: Text([
-        role,
-        if (a != null) a.name,
-        if (a != null && a.tz.isNotEmpty) tr('ora locală ${hm(now)}$offset', 'local time ${hm(now)}$offset'),
-      ].join(' · ')),
+    final offset = a.tz.isEmpty ? '' : _offsetText(now.timeZoneOffset - DateTime.now().timeZoneOffset);
+    return (
+      role,
+      '${flag(a.country)}  ${a.label} · $iata',
+      a.tz.isEmpty ? null : '${tr('ora locală', 'local time')} ${hm(now)}$offset',
     );
   }
 
@@ -279,7 +247,7 @@ class _PassDetailPageState extends State<PassDetailPage> {
     if (d.inMinutes == 0) return '';
     final sign = d.isNegative ? '−' : '+';
     final m = d.inMinutes.abs();
-    return ' ($sign${m ~/ 60}${m % 60 == 0 ? '' : ':${two(m % 60)}'} h${tr(' față de tine', ' from you')})';
+    return ' ($sign${m ~/ 60}${m % 60 == 0 ? '' : ':${two(m % 60)}'} h)';
   }
 }
 

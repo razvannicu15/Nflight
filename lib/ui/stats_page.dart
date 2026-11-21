@@ -164,16 +164,6 @@ class _StatsPageState extends State<StatsPage> {
           ]),
         ]),
       ),
-      Padding(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-        child: Text(
-          tr('Echivalentul a ${(total / 40075).toStringAsFixed(2)} ocoluri ale Pământului'
-              '${total > 384400 ? ' sau ${(total / 384400).toStringAsFixed(1)} drumuri până la Lună' : ''}.',
-              'That is ${(total / 40075).toStringAsFixed(2)} times around the Earth'
-              '${total > 384400 ? ' or ${(total / 384400).toStringAsFixed(1)} trips to the Moon' : ''}.'),
-          style: t.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
-        ),
-      ),
       SectionTitle(tr('Recorduri', 'Records')),
       ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 24),

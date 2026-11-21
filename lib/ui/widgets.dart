@@ -304,8 +304,9 @@ class NextFlightCard extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       child: InkWell(
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 4),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Text(tr('URMĂTORUL ZBOR', 'NEXT FLIGHT'),
@@ -319,13 +320,18 @@ class NextFlightCard extends StatelessWidget {
                 style: t.bodyMedium?.copyWith(color: cs.onPrimaryContainer)),
             const SizedBox(height: 16),
             RouteHeader(p, large: true, onColor: cs.onPrimaryContainer),
-            const SizedBox(height: 16),
-            Row(children: [
-              Expanded(child: _cell(context, tr('Zbor', 'Flight'), p.flightCode)),
-              Expanded(child: _cell(context, 'Terminal', p.terminal)),
-              Expanded(child: _cell(context, tr('Poarta', 'Gate'), p.gate)),
-              Expanded(child: _cell(context, tr('Loc', 'Seat'), p.seat)),
-            ]),
+          ]),
+          ),
+          TicketDivider(color: cs.onPrimaryContainer),
+          Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+          child: Column(children: [
+            CellRow([
+              (tr('Zbor', 'Flight'), p.flightCode),
+              ('Terminal', p.terminal),
+              (tr('Poarta', 'Gate'), p.gate),
+              (tr('Loc', 'Seat'), p.seat),
+            ], color: cs.onPrimaryContainer, big: false),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
@@ -337,21 +343,123 @@ class NextFlightCard extends StatelessWidget {
               ),
             ),
           ]),
-        ),
+          ),
+        ]),
       ),
     );
   }
+}
 
-  Widget _cell(BuildContext context, String l, String v) {
-    final cs = Theme.of(context).colorScheme;
+/// One row of cells separated by hairlines: "TERMINAL | POARTA | LOC".
+class CellRow extends StatelessWidget {
+  const CellRow(this.cells, {super.key, this.color, this.big = true});
+  final List<(String, String)> cells;
+  final Color? color;
+  final bool big;
+
+  @override
+  Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(l.toUpperCase(),
-          style: t.labelSmall?.copyWith(color: cs.onPrimaryContainer.withValues(alpha: 0.7), letterSpacing: 0.8)),
-      Text(v.isEmpty ? '—' : v,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: t.titleMedium?.copyWith(color: cs.onPrimaryContainer, fontWeight: FontWeight.w800)),
-    ]);
+    final cs = Theme.of(context).colorScheme;
+    final fg = color ?? cs.onSurface;
+    final line = fg.withValues(alpha: 0.14);
+    final children = <Widget>[];
+    for (final (i, c) in cells.indexed) {
+      if (i > 0) children.add(Container(width: 1, color: line));
+      children.add(Expanded(
+        child: Padding(
+          padding: EdgeInsets.only(left: i == 0 ? 0 : 12, right: 4),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Text(c.$1.toUpperCase(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: t.labelSmall?.copyWith(color: fg.withValues(alpha: 0.6), letterSpacing: 0.8)),
+            const SizedBox(height: 3),
+            Text(c.$2.isEmpty ? '—' : c.$2,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: (big ? t.titleLarge : t.titleMedium)
+                    ?.copyWith(color: fg, fontWeight: FontWeight.w700, fontFeatures: const [FontFeature.tabularFigures()])),
+          ]),
+        ),
+      ));
+    }
+    return IntrinsicHeight(child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: children));
   }
+}
+
+/// Label / value table with hairline separators. Empty values are skipped.
+class InfoTable extends StatelessWidget {
+  const InfoTable(this.rows, {super.key});
+  final List<(String, String, String?)> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final cs = Theme.of(context).colorScheme;
+    final visible = rows.where((r) => r.$2.trim().isNotEmpty).toList();
+    final children = <Widget>[];
+    for (final (i, r) in visible.indexed) {
+      if (i > 0) children.add(Divider(height: 1, thickness: 0.6, color: cs.outlineVariant.withValues(alpha: 0.6)));
+      children.add(Padding(
+        padding: const EdgeInsets.symmetric(vertical: 13),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          SizedBox(
+            width: 116,
+            child: Text(r.$1, style: t.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
+          ),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              Text(r.$2,
+                  textAlign: TextAlign.end,
+                  style: t.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w600, fontFeatures: const [FontFeature.tabularFigures()])),
+              if (r.$3 != null && r.$3!.isNotEmpty)
+                Text(r.$3!, textAlign: TextAlign.end, style: t.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+            ]),
+          ),
+        ]),
+      ));
+    }
+    return Card(
+      elevation: 0,
+      color: cs.surfaceContainerLow,
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(padding: const EdgeInsets.symmetric(horizontal: 18), child: Column(children: children)),
+    );
+  }
+}
+
+/// Perforated tear line with side notches, like a paper boarding pass.
+/// Place it directly inside a card that clips its children.
+class TicketDivider extends StatelessWidget {
+  const TicketDivider({super.key, this.color});
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = Theme.of(context).scaffoldBackgroundColor;
+    final line = (color ?? Theme.of(context).colorScheme.onSurface).withValues(alpha: 0.18);
+    return SizedBox(
+      height: 28,
+      child: Stack(clipBehavior: Clip.none, alignment: Alignment.center, children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: LayoutBuilder(builder: (_, c) {
+            final n = (c.maxWidth / 10).floor();
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: List.generate(n, (_) => Container(width: 5, height: 1.5, color: line)),
+            );
+          }),
+        ),
+        Positioned(left: -14, child: _notch(bg)),
+        Positioned(right: -14, child: _notch(bg)),
+      ]),
+    );
+  }
+
+  Widget _notch(Color bg) =>
+      Container(width: 28, height: 28, decoration: BoxDecoration(color: bg, shape: BoxShape.circle));
 }

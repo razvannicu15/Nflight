@@ -54,7 +54,7 @@ jobs:
 
       - name: Build APK
         run: |
-          flutter build apk --release --target-platform android-arm64
+          flutter build apk --release --target-platform android-arm64 --build-number=$((100 + GITHUB_RUN_NUMBER))
           cp build/app/outputs/flutter-apk/app-release.apk Nflight-android.apk
 
       - uses: actions/upload-artifact@v4
