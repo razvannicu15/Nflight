@@ -15,6 +15,7 @@ class BoardFlight {
     required this.otherIata,
     required this.otherName,
     required this.scheduled,
+    this.day = '',
     this.revised,
     this.terminal = '',
     this.gate = '',
@@ -26,6 +27,7 @@ class BoardFlight {
   final String otherIata; // destination for departures, origin for arrivals
   final String otherName;
   final String scheduled; // "HH:mm" local
+  final String day; // "yyyy-MM-dd" local, for ordering and day headers
   final String? revised; // "HH:mm" local, when different
   final String terminal;
   final String gate;
@@ -113,7 +115,9 @@ class BoardApi {
       final ap = m['airport'] is Map ? m['airport'] as Map : const {};
       final sched = _local(m['scheduledTime']);
       if (sched == null) continue;
-      final rev = _local(m['revisedTime']) ?? _local(m['runwayTime']);
+      final rev = _local(m['runwayTime']) ?? _local(m['revisedTime']) ?? _local(m['predictedTime']);
+      final st = m['scheduledTime'];
+      final day = st is Map ? (st['local'] ?? '').toString() : '';
       final iata = (ap['iata'] ?? '').toString();
       out.add(BoardFlight(
         number: (e['number'] ?? '').toString(),
@@ -121,13 +125,14 @@ class BoardApi {
         otherIata: iata,
         otherName: Airports.get(iata)?.label ?? (ap['name'] ?? iata).toString(),
         scheduled: sched,
+        day: day.length >= 10 ? day.substring(0, 10) : '',
         revised: rev,
         terminal: (m['terminal'] ?? '').toString(),
         gate: (m['gate'] ?? '').toString(),
         status: (e['status'] ?? '').toString().toLowerCase(),
       ));
     }
-    out.sort((a, b) => a.scheduled.compareTo(b.scheduled));
+    out.sort((a, b) => '${a.day} ${a.scheduled}'.compareTo('${b.day} ${b.scheduled}'));
     return out;
   }
 }

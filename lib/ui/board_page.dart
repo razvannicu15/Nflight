@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../core/airports.dart';
 import '../core/i18n.dart';
+import '../models/pass.dart';
 import '../services/board_api.dart';
 import '../services/status_api.dart';
 import '../services/store.dart';
@@ -194,7 +195,6 @@ class _BoardPageState extends State<BoardPage> {
   Widget _list(List<BoardFlight> list, {required bool departures}) {
     final cs = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
-    final mineList = store.upcoming;
     if (list.isEmpty) {
       return RefreshIndicator(
         onRefresh: () => _load(force: true),
@@ -207,74 +207,116 @@ class _BoardPageState extends State<BoardPage> {
     }
     const tab = [FontFeature.tabularFigures()];
     final header = t.labelSmall?.copyWith(color: cs.onSurfaceVariant, letterSpacing: 0.8);
+    // Columns without any data (e.g. no gates at CLJ) are left out.
+    final place = (BoardFlight f) => departures ? f.gate : f.terminal;
+    final showPlace = list.any((f) => place(f).isNotEmpty);
+    final showStatus = list.any((f) => f.statusText.isNotEmpty);
+    final today = ymd(Airports.nowAt(store.boardAirport));
+
+    // Rows plus a day header whenever the date changes after today.
+    final rows = <Object>[];
+    String? lastDay;
+    for (final f in list) {
+      if (f.day.isNotEmpty && f.day != lastDay) {
+        if (lastDay != null || f.day != today) rows.add(f.day);
+        lastDay = f.day;
+      }
+      rows.add(f);
+    }
+
+    Widget headerRow() => Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+          child: Row(children: [
+            SizedBox(width: 62, child: Text(tr('ORA', 'TIME'), style: header)),
+            Expanded(child: Text(departures ? tr('SPRE', 'TO') : tr('DIN', 'FROM'), style: header)),
+            if (showPlace) SizedBox(width: 56, child: Text(departures ? tr('POARTA', 'GATE') : 'TERM.', style: header)),
+            if (showStatus) SizedBox(width: 92, child: Text('STATUS', textAlign: TextAlign.end, style: header)),
+          ]),
+        );
+
+    Widget dayRow(String day) {
+      final d = DateTime.tryParse(day);
+      final tomorrow = d != null && DateTime.tryParse(today) != null &&
+          d.difference(DateTime.parse(today)).inDays == 1;
+      return Container(
+        width: double.infinity,
+        color: cs.surfaceContainerHigh,
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        child: Text(
+          tomorrow ? tr('Mâine', 'Tomorrow') : (d == null ? day : longDate(d)),
+          style: t.labelLarge?.copyWith(color: cs.primary, fontWeight: FontWeight.w700),
+        ),
+      );
+    }
+
+    Widget flightRow(BoardFlight f) {
+      final mine = store.upcoming.any(f.matches);
+      final late = f.delayed && !f.cancelled;
+      final statusColor = f.cancelled
+          ? cs.error
+          : late
+              ? const Color(0xFFE65100)
+              : cs.onSurfaceVariant;
+      return Container(
+        color: mine ? cs.primaryContainer.withValues(alpha: 0.55) : null,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          SizedBox(
+            width: 62,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(late ? f.revised! : f.scheduled,
+                  style: t.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700, fontFeatures: tab, color: late ? statusColor : null)),
+              if (late)
+                Text(f.scheduled,
+                    style: t.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant, decoration: TextDecoration.lineThrough, fontFeatures: tab)),
+            ]),
+          ),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(f.otherName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.bodyLarge?.copyWith(fontWeight: mine ? FontWeight.w800 : FontWeight.w600)),
+              Text('${f.number} · ${f.airline}',
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: t.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+            ]),
+          ),
+          if (showPlace)
+            SizedBox(
+              width: 56,
+              child: Text(place(f).isEmpty ? '—' : place(f),
+                  style: t.titleMedium?.copyWith(fontWeight: FontWeight.w700, fontFeatures: tab)),
+            ),
+          if (showStatus)
+            SizedBox(
+              width: 92,
+              child: Text(f.statusText,
+                  textAlign: TextAlign.end,
+                  maxLines: 2,
+                  style: t.bodySmall?.copyWith(color: statusColor, fontWeight: FontWeight.w600)),
+            ),
+        ]),
+      );
+    }
+
+    final divider = Divider(height: 1, thickness: 0.6, indent: 16, endIndent: 16, color: cs.outlineVariant.withValues(alpha: 0.6));
     return RefreshIndicator(
       onRefresh: () => _load(force: true),
       child: MaxWidth(
-        child: ListView.separated(
+        child: ListView.builder(
           padding: const EdgeInsets.only(bottom: 32),
-          itemCount: list.length + 1,
-          separatorBuilder: (_, i) =>
-              Divider(height: 1, thickness: 0.6, indent: 16, endIndent: 16, color: cs.outlineVariant.withValues(alpha: 0.6)),
+          itemCount: rows.length + 1,
           itemBuilder: (_, i) {
-            if (i == 0) {
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-                child: Row(children: [
-                  SizedBox(width: 58, child: Text(tr('ORA', 'TIME'), style: header)),
-                  Expanded(child: Text(departures ? tr('SPRE', 'TO') : tr('DIN', 'FROM'), style: header)),
-                  SizedBox(width: 52, child: Text(departures ? tr('POARTA', 'GATE') : 'TERM.', style: header)),
-                  SizedBox(width: 92, child: Text('STATUS', textAlign: TextAlign.end, style: header)),
-                ]),
-              );
-            }
-            final f = list[i - 1];
-            final mine = mineList.any(f.matches);
-            final late = f.delayed && !f.cancelled;
-            final statusColor = f.cancelled
-                ? cs.error
-                : late
-                    ? const Color(0xFFE65100)
-                    : cs.onSurfaceVariant;
-            return Container(
-              color: mine ? cs.primaryContainer.withValues(alpha: 0.55) : null,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                SizedBox(
-                  width: 58,
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(late ? f.revised! : f.scheduled,
-                        style: t.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700, fontFeatures: tab, color: late ? statusColor : null)),
-                    if (late)
-                      Text(f.scheduled,
-                          style: t.bodySmall?.copyWith(
-                              color: cs.onSurfaceVariant, decoration: TextDecoration.lineThrough, fontFeatures: tab)),
-                  ]),
-                ),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(f.otherName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: t.bodyLarge?.copyWith(fontWeight: mine ? FontWeight.w800 : FontWeight.w600)),
-                    Text('${f.number} · ${f.airline}',
-                        maxLines: 1, overflow: TextOverflow.ellipsis, style: t.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
-                  ]),
-                ),
-                SizedBox(
-                  width: 52,
-                  child: Text((departures ? f.gate : f.terminal).isEmpty ? '—' : (departures ? f.gate : f.terminal),
-                      style: t.titleMedium?.copyWith(fontWeight: FontWeight.w700, fontFeatures: tab)),
-                ),
-                SizedBox(
-                  width: 92,
-                  child: Text(f.statusText,
-                      textAlign: TextAlign.end,
-                      maxLines: 2,
-                      style: t.bodySmall?.copyWith(color: statusColor, fontWeight: FontWeight.w600)),
-                ),
-              ]),
-            );
+            if (i == 0) return headerRow();
+            final r = rows[i - 1];
+            if (r is String) return dayRow(r);
+            final next = i < rows.length ? rows[i] : null;
+            return Column(mainAxisSize: MainAxisSize.min, children: [
+              flightRow(r as BoardFlight),
+              if (next is BoardFlight) divider,
+            ]);
           },
         ),
       ),

@@ -74,9 +74,12 @@ void seed() {
 }
 
 Board demoBoard() {
-  BoardFlight f(String no, String al, String to, String t, {String? rev, String gate = '', String st = 'expected'}) =>
+  final today = Airports.nowAt('CLJ');
+  final d0 = ymd(today), d1 = ymd(today.add(const Duration(days: 1)));
+  BoardFlight f(String no, String al, String to, String t,
+          {String? rev, String gate = '', String st = 'expected', bool tomorrow = false}) =>
       BoardFlight(number: no, airline: al, otherIata: to, otherName: Airports.city(to), scheduled: t,
-          revised: rev, gate: gate, status: st);
+          day: tomorrow ? d1 : d0, revised: rev, gate: gate, status: st);
   return Board([
     f('W6 3141', 'Wizz Air', 'LTN', '06:40', gate: 'A4', st: 'boarding'),
     f('W6 3301', 'Wizz Air', 'BVA', '07:05', gate: 'A2', st: 'departed'),
@@ -85,8 +88,13 @@ Board demoBoard() {
     f('FR 1234', 'Ryanair', 'BGY', '09:00', st: 'canceled'),
     f('W6 3021', 'Wizz Air', 'DTM', '10:20'),
     f('OS 798', 'Austrian', 'VIE', '11:45'),
-    f('W6 3445', 'Wizz Air', 'MAD', '12:10'),
-  ], [], DateTime.now());
+    f('W6 3445', 'Wizz Air', 'MAD', '23:10'),
+    f('W4 3440', 'Wizz Air Malta', 'MMX', '00:55', tomorrow: true),
+    f('LH 1670', 'Lufthansa', 'MUC', '01:05', tomorrow: true),
+  ], [
+    f('W4 3440', 'Wizz Air Malta', 'MMX', '00:55', tomorrow: true),
+    f('W4 3418', 'Wizz Air Malta', 'ZAZ', '01:00', tomorrow: true),
+  ], DateTime.now());
 }
 
 Widget app(Widget home, Brightness b) => MaterialApp(
