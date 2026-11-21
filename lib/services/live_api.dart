@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:http/http.dart' as http;
 
 import '../core/airports.dart';
+import 'quota.dart';
 
 /// A plane's position from OpenSky Network (free ADS-B data, non-commercial use).
 class LiveState {
@@ -85,6 +86,7 @@ class LiveApi {
 
   static Future<List<List>> _query(Map<String, String> q) async {
     final r = await http.get(Uri.https(_base, '/api/states/all', q)).timeout(const Duration(seconds: 15));
+    Quota.fromHeaders(Quota.opensky, r.headers, status: r.statusCode);
     if (r.statusCode != 200) return [];
     final j = jsonDecode(r.body);
     final list = j is Map ? j['states'] : null;
@@ -146,6 +148,7 @@ class LiveApi {
       final r = await http
           .get(Uri.https(_base, '/api/tracks/all', {'icao24': icao24.toLowerCase(), 'time': '0'}))
           .timeout(const Duration(seconds: 15));
+      Quota.fromHeaders(Quota.opensky, r.headers, status: r.statusCode);
       if (r.statusCode != 200) return (const <(double, double)>[], null);
       final j = jsonDecode(r.body);
       final pts = j is Map ? j['path'] : null;

@@ -11,6 +11,7 @@ import 'package:nflight/core/airports.dart';
 import 'package:nflight/core/i18n.dart';
 import 'package:nflight/main.dart';
 import 'package:nflight/models/pass.dart';
+import 'package:nflight/services/quota.dart';
 import 'package:nflight/services/store.dart';
 import 'package:nflight/services/board_api.dart';
 import 'package:nflight/ui/board_page.dart';
@@ -56,6 +57,10 @@ FlightPass demo(String from, String to, String carrier, String no, DateTime day,
 }
 
 void seed() {
+  final now = DateTime.now();
+  store.quotas
+    ..[Quota.aerodatabox] = QuotaInfo(remaining: 412, limit: 600, resetAt: now.add(const Duration(days: 9)), updated: now)
+    ..[Quota.opensky] = QuotaInfo(remaining: 38, limit: 400, resetAt: DateTime(now.year, now.month, now.day + 1, 2), updated: now);
   store.boardAirports = ['CLJ', 'OTP', 'LTN'];
   store.boardAirport = 'CLJ';
   final now = DateTime.now();

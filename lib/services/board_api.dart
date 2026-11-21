@@ -6,6 +6,7 @@ import 'package:timezone/timezone.dart' as tz;
 import '../core/airports.dart';
 import '../core/i18n.dart';
 import '../models/pass.dart';
+import 'quota.dart';
 import 'status_api.dart';
 import 'store.dart';
 
@@ -163,6 +164,7 @@ class BoardApi {
       for (final side in ['dep_iata', 'arr_iata']) {
         final uri = Uri.https('api.aviationstack.com', '/v1/flights', {'access_key': avKey, side: iata, 'limit': '100'});
         final r = await http.get(uri).timeout(const Duration(seconds: 25));
+        Quota.count(Quota.aviationstack, monthlyLimit: 100);
         if (r.statusCode != 200) return (null, tr('Eroare server (${r.statusCode}).', 'Server error (${r.statusCode}).'));
         final j = jsonDecode(utf8.decode(r.bodyBytes));
         if (j is! Map || j['data'] is! List) return (null, tr('Limita lunară a fost atinsă.', 'Monthly limit reached.'));
@@ -238,6 +240,7 @@ class BoardApi {
         'X-RapidAPI-Key': StatusApi.key,
         'X-RapidAPI-Host': StatusApi.host,
       }).timeout(const Duration(seconds: 25));
+      Quota.fromHeaders(Quota.aerodatabox, r.headers, status: r.statusCode);
       if (r.statusCode == 429) return (null, tr('Limita lunară a fost atinsă.', 'Monthly limit reached.'));
       if (r.statusCode == 204 || r.body.trim().isEmpty) return (Board([], [], DateTime.now()), null);
       if (r.statusCode != 200) return (null, tr('Eroare server (${r.statusCode}).', 'Server error (${r.statusCode}).'));

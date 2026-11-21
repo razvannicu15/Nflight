@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../models/pass.dart';
 import 'notifier.dart';
+import 'quota.dart';
 import 'store.dart';
 import '../core/i18n.dart';
 
@@ -29,6 +30,7 @@ class StatusApi {
         'X-RapidAPI-Key': key,
         'X-RapidAPI-Host': host,
       }).timeout(const Duration(seconds: 20));
+      Quota.fromHeaders(Quota.aerodatabox, r.headers, status: r.statusCode);
       if (r.statusCode == 204 || r.body.trim().isEmpty) {
         _markTried(p);
         return tr('Zborul nu a fost găsit.', 'Flight not found.');

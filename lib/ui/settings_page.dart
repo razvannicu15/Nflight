@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import '../core/i18n.dart';
 import '../models/pass.dart';
 import '../services/notifier.dart';
+import '../services/board_api.dart';
+import '../services/quota.dart';
 import '../services/status_api.dart';
 import '../services/store.dart';
 import 'widgets.dart';
@@ -111,12 +113,24 @@ class _SettingsPageState extends State<SettingsPage> {
                 onChanged: (v) => _set(() => store.remindBoarding = v, reschedule: true),
               ),
               SectionTitle(tr('Status live', 'Live status')),
-              ListTile(
-                leading: Icon(StatusApi.enabled ? Icons.cloud_done_outlined : Icons.cloud_off_outlined,
-                    color: StatusApi.enabled ? cs.primary : null),
-                title: Text(tr('Întârzieri, poartă, terminal', 'Delays, gate, terminal')),
-                trailing: Text(StatusApi.enabled ? tr('Activ', 'On') : tr('Inactiv', 'Off'),
-                    style: TextStyle(color: StatusApi.enabled ? cs.primary : cs.onSurfaceVariant, fontWeight: FontWeight.w600)),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                child: Card(
+                  elevation: 0,
+                  color: cs.surfaceContainerLow,
+                  margin: EdgeInsets.zero,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 6, 18, 6),
+                    child: Column(children: [
+                      _QuotaRow(tr('Status și tabele', 'Status and boards'), 'AeroDataBox', Quota.get(Quota.aerodatabox),
+                          active: StatusApi.enabled),
+                      if (BoardApi.avKey.isNotEmpty)
+                        _QuotaRow(tr('Rezervă tabele', 'Backup boards'), 'aviationstack', Quota.get(Quota.aviationstack)),
+                      _QuotaRow(tr('Hartă live', 'Live map'), 'OpenSky', Quota.get(Quota.opensky), last: true),
+                    ]),
+                  ),
+                ),
               ),
               SectionTitle(tr('Bilete', 'Passes')),
               SwitchListTile(
@@ -145,5 +159,87 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
       ),
     );
+  }
+}
+
+/// One data source: remaining / total, a slim bar and when it refills.
+class _QuotaRow extends StatelessWidget {
+  const _QuotaRow(this.title, this.source, this.q, {this.active = true, this.last = false});
+  final String title;
+  final String source;
+  final QuotaInfo? q;
+  final bool active;
+  final bool last;
+
+  String _reset(DateTime r) {
+    final now = DateTime.now();
+    final d = DateTime(r.year, r.month, r.day).difference(DateTime(now.year, now.month, now.day)).inDays;
+    final at = '${r.hour.toString().padLeft(2, '0')}:${r.minute.toString().padLeft(2, '0')}';
+    if (d <= 0) return tr('se reîncarcă azi la $at', 'refills today at $at');
+    if (d == 1) return tr('se reîncarcă mâine la $at', 'refills tomorrow at $at');
+    return tr('se reîncarcă în $d zile · ${shortDate(r)}', 'refills in $d days · ${shortDate(r)}');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final cs = Theme.of(context).colorScheme;
+    final q = this.q;
+    final rem = q?.remaining, lim = q?.limit;
+    final frac = (rem != null && lim != null && lim > 0) ? (rem / lim).clamp(0.0, 1.0) : null;
+    final low = frac != null && frac < 0.15;
+    final String right;
+    if (!active) {
+      right = tr('inactiv', 'off');
+    } else if (rem == null) {
+      right = '—';
+    } else {
+      right = lim == null ? '$rem' : '$rem / $lim';
+    }
+    final sub = !active
+        ? tr('fără cheie API', 'no API key')
+        : q == null
+            ? tr('încă nicio cerere', 'no requests yet')
+            : [
+                if (q.resetAt != null) _reset(q.resetAt!),
+                if (q.estimated) tr('estimat', 'estimated'),
+              ].join(' · ');
+    return Column(children: [
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(
+              child: Text.rich(TextSpan(children: [
+                TextSpan(text: title, style: t.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
+                TextSpan(text: '  $source', style: t.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+              ])),
+            ),
+            Text(right,
+                style: t.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: low ? cs.error : null,
+                    fontFeatures: const [FontFeature.tabularFigures()])),
+          ]),
+          if (frac != null) ...[
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: frac,
+                minHeight: 6,
+                color: low ? cs.error : cs.primary,
+                backgroundColor: cs.surfaceContainerHighest,
+              ),
+            ),
+          ],
+          if (sub.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(sub, style: t.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+          ],
+        ]),
+      ),
+      if (!last) Divider(height: 1, thickness: 0.6, color: cs.outlineVariant.withValues(alpha: 0.6)),
+    ]);
   }
 }

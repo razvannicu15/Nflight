@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import '../core/airports.dart';
 import '../core/i18n.dart';
 import '../models/pass.dart';
+import 'quota.dart';
 
 /// All app data: passes + settings, kept in one JSON file on the phone.
 class Store extends ChangeNotifier {
@@ -19,6 +20,9 @@ class Store extends ChangeNotifier {
 
   /// Airport tab: saved airports (chips) and the one shown.
   List<String> boardAirports = ['CLJ'];
+
+  /// Free-allowance status per data source (see quota.dart).
+  final Map<String, QuotaInfo> quotas = {};
   String boardAirport = 'CLJ';
   String apiKey = '';
   bool remind24h = true;
@@ -46,6 +50,12 @@ class Store extends ChangeNotifier {
           orElse: () => ThemeMode.system);
       apiKey = s['apiKey'] ?? '';
       language = s['lang'] ?? 'system';
+      quotas
+        ..clear()
+        ..addAll({
+          for (final e in Map<String, dynamic>.from((s['quotas'] as Map?) ?? {}).entries)
+            e.key: QuotaInfo.fromJson(Map<String, dynamic>.from(e.value as Map)),
+        });
       boardAirports = ((s['boardAirports'] as List?) ?? ['CLJ']).map((e) => e.toString()).toList();
       boardAirport = s['boardAirport'] ?? (boardAirports.isEmpty ? 'CLJ' : boardAirports.first);
       remind24h = s['r24'] ?? true;
@@ -67,6 +77,7 @@ class Store extends ChangeNotifier {
           'apiKey': apiKey,
           'lang': language,
           'boardAirports': boardAirports,
+          'quotas': {for (final e in quotas.entries) e.key: e.value.toJson()},
           'boardAirport': boardAirport,
           'r24': remind24h,
           'r3': remind3h,
