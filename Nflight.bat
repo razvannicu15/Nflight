@@ -177,7 +177,7 @@ call flutter pub get
 if errorlevel 1 exit /b 1
 call dart run tool/patch_platforms.dart
 call dart run flutter_launcher_icons
-call flutter build apk --release
+call flutter build apk --release --target-platform android-arm64
 if errorlevel 1 exit /b 1
 if not exist "%OUT_DIR%" mkdir "%OUT_DIR%"
 copy /y "build\app\outputs\flutter-apk\app-release.apk" "%APK%" >nul
