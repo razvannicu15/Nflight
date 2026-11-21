@@ -336,7 +336,7 @@ class LiveNumbers extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = state;
     final vr = (s.verticalRate * 60).round(); // m/min
-    final vText = vr.abs() < 60 ? tr('constant', 'level') : '${vr > 0 ? '↑' : '↓'} ${km(vr.abs())} m/min';
+    final vText = vr.abs() < 60 ? tr('constant', 'level') : '${vr > 0 ? '+' : '−'}${km(vr.abs())} m/min';
     return CellRow([
       (tr('Altitudine', 'Altitude'), s.onGround ? tr('la sol', 'ground') : '${km(s.altitudeM)} m'),
       (tr('Viteză', 'Speed'), '${s.speedKmh.round()} km/h'),
